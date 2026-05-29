@@ -331,6 +331,8 @@ if not st.session_state.token:
                     st.error("Passwords do not match.")
                 elif len(reg_password) < 6:
                     st.error("Password must be at least 6 characters.")
+                elif len(reg_password) > 128:
+                    st.error("Password must be 128 characters or fewer.")
                 else:
                     with st.spinner("Creating account details..."):
                         try:

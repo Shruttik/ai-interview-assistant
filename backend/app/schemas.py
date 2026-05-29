@@ -8,7 +8,7 @@ from pydantic import BaseModel, EmailStr, Field
 
 class UserCreate(BaseModel):
     email: EmailStr
-    password: str = Field(..., min_length=6, description="Password must be at least 6 characters.")
+    password: str = Field(..., min_length=6, max_length=128, description="Password must be between 6 and 128 characters.")
 
 class UserResponse(BaseModel):
     id: int

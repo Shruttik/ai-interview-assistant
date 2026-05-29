@@ -1,4 +1,5 @@
 from datetime import datetime, timedelta
+import hashlib
 from typing import Optional
 import jwt
 from fastapi import Depends, HTTPException, status
@@ -17,21 +18,31 @@ pwd_context = CryptContext(schemes=["bcrypt"], deprecated="auto")
 # OAuth2 Password Bearer (retrieves the token from Authorization header)
 oauth2_scheme = OAuth2PasswordBearer(tokenUrl="api/auth/token")
 
+def _pre_hash_password(password: str) -> str:
+    """
+    Pre-hashes a password using SHA-256 to circumvent bcrypt's 72-byte limitation
+    and mitigate potential Denial of Service (DoS) attacks on bcrypt calculations.
+    Returns the hexadecimal string digest of the hash.
+    """
+    return hashlib.sha256(password.encode("utf-8")).hexdigest()
+
 def verify_password(plain_password: str, hashed_password: str) -> bool:
     """
-    Checks if a plain-text password matches the stored bcrypt hash.
+    Checks if a plain-text password (after SHA-256 pre-hashing) matches the stored bcrypt hash.
     """
     try:
-        return pwd_context.verify(plain_password, hashed_password)
+        pre_hashed = _pre_hash_password(plain_password)
+        return pwd_context.verify(pre_hashed, hashed_password)
     except Exception as e:
         logger.error(f"Error verifying password: {e}")
         return False
 
 def get_password_hash(password: str) -> str:
     """
-    Generates a secure bcrypt hash of a plain password.
+    Generates a secure bcrypt hash of a pre-hashed password.
     """
-    return pwd_context.hash(password)
+    pre_hashed = _pre_hash_password(password)
+    return pwd_context.hash(pre_hashed)
 
 def create_access_token(data: dict, expires_delta: Optional[timedelta] = None) -> str:
     """
