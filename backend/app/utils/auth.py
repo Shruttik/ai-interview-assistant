@@ -1,19 +1,16 @@
 from datetime import datetime, timedelta
 import hashlib
 from typing import Optional
+import bcrypt
 import jwt
 from fastapi import Depends, HTTPException, status
 from fastapi.security import OAuth2PasswordBearer
-from passlib.context import CryptContext
 from sqlalchemy.orm import Session
 
 from backend.app.config import settings
 from backend.app.database import get_db
 from backend.app.models import User
 from backend.app.utils.logger import logger
-
-# Password Hashing Crypt Context
-pwd_context = CryptContext(schemes=["bcrypt"], deprecated="auto")
 
 # OAuth2 Password Bearer (retrieves the token from Authorization header)
 oauth2_scheme = OAuth2PasswordBearer(tokenUrl="api/auth/token")
@@ -32,7 +29,11 @@ def verify_password(plain_password: str, hashed_password: str) -> bool:
     """
     try:
         pre_hashed = _pre_hash_password(plain_password)
-        return pwd_context.verify(pre_hashed, hashed_password)
+        # Verify using standard bcrypt checkpw
+        return bcrypt.checkpw(
+            pre_hashed.encode("utf-8"),
+            hashed_password.encode("utf-8")
+        )
     except Exception as e:
         logger.error(f"Error verifying password: {e}")
         return False
@@ -42,7 +43,10 @@ def get_password_hash(password: str) -> str:
     Generates a secure bcrypt hash of a pre-hashed password.
     """
     pre_hashed = _pre_hash_password(password)
-    return pwd_context.hash(pre_hashed)
+    # Generate salt and hash using standard bcrypt
+    salt = bcrypt.gensalt()
+    hashed = bcrypt.hashpw(pre_hashed.encode("utf-8"), salt)
+    return hashed.decode("utf-8")
 
 def create_access_token(data: dict, expires_delta: Optional[timedelta] = None) -> str:
     """
