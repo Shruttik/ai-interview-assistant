@@ -22,14 +22,37 @@ CUSTOM_CSS = """
 <style>
 @import url('https://fonts.googleapis.com/css2?family=Outfit:wght@300;400;600;700&display=swap');
 
-/* Main font application */
+/* Force Light Green-White Theme globally */
+.stApp {
+    background-color: #f7faf8 !important;
+    color: #1e293b !important;
+}
+
 html, body, [class*="css"], .stMarkdown {
     font-family: 'Outfit', sans-serif;
 }
 
+/* Sidebar Styling */
+[data-testid="stSidebar"] {
+    background-color: #ffffff !important;
+    border-right: 1px solid #e6f0eb !important;
+}
+[data-testid="stSidebar"] .stMarkdown, 
+[data-testid="stSidebar"] p, 
+[data-testid="stSidebar"] label, 
+[data-testid="stSidebar"] span {
+    color: #2c3e50 !important;
+}
+
+/* Titles and Headers */
+h1, h2, h3, h4, h5, h6 {
+    color: #0f291e !important;
+    font-weight: 700 !important;
+}
+
 /* Gradient Header Title */
 .gradient-text {
-    background: linear-gradient(90deg, #6366f1, #3b82f6, #ec4899);
+    background: linear-gradient(90deg, #0f5132, #10b981, #059669);
     -webkit-background-clip: text;
     -webkit-text-fill-color: transparent;
     font-weight: 800;
@@ -40,67 +63,70 @@ html, body, [class*="css"], .stMarkdown {
 
 .gradient-subtext {
     font-size: 1.15rem;
-    color: #94a3b8;
+    color: #475569;
     text-align: center;
     margin-bottom: 1.8rem;
 }
 
 /* Custom styled Card containers */
 .premium-card {
-    background: rgba(255, 255, 255, 0.03);
-    border: 1px solid rgba(255, 255, 255, 0.08);
+    background: #ffffff !important;
+    border: 1px solid #e2ece9 !important;
     border-radius: 16px;
     padding: 24px;
     margin-bottom: 20px;
-    box-shadow: 0 4px 30px rgba(0, 0, 0, 0.15);
-    backdrop-filter: blur(5px);
-    transition: all 0.3s ease;
+    box-shadow: 0 4px 20px rgba(16, 185, 129, 0.05);
+    transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
 }
 
 .premium-card:hover {
-    border-color: rgba(99, 102, 241, 0.35);
-    box-shadow: 0 8px 30px rgba(99, 102, 241, 0.12);
-    transform: translateY(-1px);
+    border-color: rgba(16, 185, 129, 0.3) !important;
+    box-shadow: 0 10px 25px rgba(16, 185, 129, 0.08);
+    transform: translateY(-2px);
 }
 
 /* Badge highlights */
 .concept-tag {
     display: inline-block;
-    background-color: rgba(99, 102, 241, 0.12);
-    color: #a5b4fc;
-    border: 1px solid rgba(99, 102, 241, 0.25);
+    background-color: #f0fdf4 !important;
+    color: #15803d !important;
+    border: 1px solid #bbf7d0 !important;
     border-radius: 20px;
     padding: 4px 12px;
     font-size: 0.82rem;
     margin-right: 6px;
     margin-bottom: 6px;
+    font-weight: 500;
 }
 
 .difficulty-easy {
-    background-color: rgba(16, 185, 129, 0.12);
-    color: #34d399;
-    border: 1px solid rgba(16, 185, 129, 0.25);
+    background-color: #f0fdf4 !important;
+    color: #166534 !important;
+    border: 1px solid #bbf7d0 !important;
     border-radius: 20px;
     padding: 3px 10px;
     font-size: 0.8rem;
+    font-weight: 600;
 }
 
 .difficulty-medium {
-    background-color: rgba(245, 158, 11, 0.12);
-    color: #fbbf24;
-    border: 1px solid rgba(245, 158, 11, 0.25);
+    background-color: #fffbeb !important;
+    color: #92400e !important;
+    border: 1px solid #fef3c7 !important;
     border-radius: 20px;
     padding: 3px 10px;
     font-size: 0.8rem;
+    font-weight: 600;
 }
 
 .difficulty-hard {
-    background-color: rgba(239, 68, 68, 0.12);
-    color: #f87171;
-    border: 1px solid rgba(239, 68, 68, 0.25);
+    background-color: #fef2f2 !important;
+    color: #991b1b !important;
+    border: 1px solid #fee2e2 !important;
     border-radius: 20px;
     padding: 3px 10px;
     font-size: 0.8rem;
+    font-weight: 600;
 }
 
 /* Large Score display circle */
@@ -119,24 +145,24 @@ html, body, [class*="css"], .stMarkdown {
     width: 130px;
     height: 130px;
     border-radius: 50%;
-    background: linear-gradient(135deg, #6366f1, #d946ef);
-    color: white;
+    background: linear-gradient(135deg, #059669, #10b981);
+    color: white !important;
     font-size: 3.2rem;
     font-weight: 800;
-    box-shadow: 0 10px 25px rgba(99, 102, 241, 0.35);
+    box-shadow: 0 10px 25px rgba(16, 185, 129, 0.25);
     position: relative;
     transition: transform 0.3s ease;
 }
 
 .score-circle:hover {
-    transform: scale(1.03) rotate(3deg);
+    transform: scale(1.05) rotate(3deg);
 }
 
 .score-label {
     margin-top: 12px;
     font-size: 1rem;
     font-weight: 600;
-    color: #94a3b8;
+    color: #475569;
     text-transform: uppercase;
     letter-spacing: 0.08em;
 }
@@ -144,37 +170,101 @@ html, body, [class*="css"], .stMarkdown {
 /* Success/Strength items list */
 .strength-item {
     border-left: 4px solid #10b981;
-    background: rgba(16, 185, 129, 0.04);
+    background: #f0fdf4 !important;
+    color: #14532d !important;
     padding: 10px 16px;
     margin-bottom: 8px;
     border-radius: 0 8px 8px 0;
     font-size: 0.95rem;
+    font-weight: 500;
 }
 
 .weakness-item {
     border-left: 4px solid #f59e0b;
-    background: rgba(245, 158, 11, 0.04);
+    background: #fffbeb !important;
+    color: #78350f !important;
     padding: 10px 16px;
     margin-bottom: 8px;
     border-radius: 0 8px 8px 0;
     font-size: 0.95rem;
+    font-weight: 500;
+}
+
+/* Form inputs overrides */
+.stTextInput>div>div>input, 
+.stTextArea>div>div>textarea,
+.stNumberInput>div>div>input,
+.stSelectbox>div>div>div {
+    background-color: #ffffff !important;
+    border: 1px solid #cbd5e1 !important;
+    color: #1e293b !important;
+    border-radius: 8px !important;
+}
+
+.stTextInput>div>div>input:focus, 
+.stTextArea>div>div>textarea:focus,
+.stNumberInput>div>div>input:focus {
+    border-color: #10b981 !important;
+    box-shadow: 0 0 0 2px rgba(16, 185, 129, 0.2) !important;
 }
 
 /* Button UI styling updates */
 div.stButton > button {
-    background: linear-gradient(90deg, #4f46e5, #3b82f6);
-    color: white;
-    border: none;
-    padding: 10px 20px;
-    border-radius: 8px;
-    font-weight: 600;
-    transition: all 0.3s ease;
+    background: linear-gradient(90deg, #059669, #10b981) !important;
+    color: white !important;
+    border: none !important;
+    padding: 10px 20px !important;
+    border-radius: 8px !important;
+    font-weight: 600 !important;
+    transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1) !important;
+    box-shadow: 0 4px 12px rgba(16, 185, 129, 0.15) !important;
 }
 
 div.stButton > button:hover {
-    background: linear-gradient(90deg, #4338ca, #2563eb);
-    box-shadow: 0 4px 15px rgba(59, 130, 246, 0.3);
-    transform: translateY(-1px);
+    background: linear-gradient(90deg, #047857, #059669) !important;
+    box-shadow: 0 6px 20px rgba(16, 185, 129, 0.25) !important;
+    transform: translateY(-1.5px) !important;
+}
+
+/* Tabs override */
+.stTabs [data-baseweb="tab-list"] {
+    gap: 8px !important;
+    background-color: transparent !important;
+}
+
+.stTabs [data-baseweb="tab"] {
+    background-color: #ffffff !important;
+    border: 1px solid #e2ece9 !important;
+    border-radius: 8px 8px 0px 0px !important;
+    padding: 8px 20px !important;
+    color: #64748b !important;
+    font-weight: 600 !important;
+    transition: all 0.2s ease !important;
+}
+
+.stTabs [data-baseweb="tab"]:hover {
+    color: #10b981 !important;
+    border-color: #bbf7d0 !important;
+}
+
+.stTabs [aria-selected="true"] {
+    background-color: #e6f7ed !important;
+    color: #047857 !important;
+    border-color: #10b981 #10b981 transparent #10b981 !important;
+    border-bottom: 3px solid #10b981 !important;
+}
+
+/* File uploader styling */
+[data-testid="stFileUploader"] {
+    background-color: #ffffff !important;
+    border: 1px dashed #cbd5e1 !important;
+    border-radius: 12px !important;
+    padding: 15px !important;
+}
+
+/* Progress bar override */
+div[data-testid="stProgress"] > div > div > div {
+    background-color: #10b981 !important;
 }
 </style>
 """
