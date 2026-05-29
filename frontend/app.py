@@ -400,7 +400,7 @@ with tab_coach:
             max_q = st.number_input(
                 "Number of Interview Questions",
                 min_value=3,
-                max_value=10,
+                max_value=25,
                 value=st.session_state.max_questions
             )
             st.markdown("</div>", unsafe_allow_html=True)
@@ -620,6 +620,31 @@ with tab_coach:
             st.write(f"- {rec}")
         st.markdown("</div>", unsafe_allow_html=True)
         
+        # AI Adaptive Recommendations
+        col_rec1, col_rec2 = st.columns(2, gap="medium")
+        with col_rec1:
+            st.markdown("<div class='premium-card' style='height: 100%;'>", unsafe_allow_html=True)
+            st.markdown("#### 📚 Recommended Topics to Revise")
+            if report.get('topics_to_revise'):
+                for topic in report.get('topics_to_revise', []):
+                    st.markdown(f"<span class='concept-tag' style='background-color: rgba(239, 68, 68, 0.12); color: #f87171; border-color: rgba(239, 68, 68, 0.25);'>{topic}</span>", unsafe_allow_html=True)
+            else:
+                st.write("*No revision topics specified.*")
+            
+            st.markdown("##### Concepts to Strengthen:")
+            if report.get('concepts_to_strengthen'):
+                for concept in report.get('concepts_to_strengthen', []):
+                    st.markdown(f"<div class='weakness-item' style='border-left-color: #ef4444; background: rgba(239, 68, 68, 0.04);'>🔍 {concept}</div>", unsafe_allow_html=True)
+            else:
+                st.write("*No concepts specified.*")
+            st.markdown("</div>", unsafe_allow_html=True)
+            
+        with col_rec2:
+            st.markdown("<div class='premium-card' style='height: 100%;'>", unsafe_allow_html=True)
+            st.markdown("#### 🎯 Focus for Next Mock Session")
+            st.write(report.get('suggested_focus', 'Practice more to get tailor-made revision advice.'))
+            st.markdown("</div>", unsafe_allow_html=True)
+        
         st.markdown("---")
         st.markdown("### 📝 Detailed Question Log")
         
@@ -747,12 +772,88 @@ with tab_ats:
 # TAB 3: HISTORY & INSIGHTS PORTAL
 # ---------------------------------------------------------------------------
 with tab_history:
-    st.markdown("### 📜 Your Past Interview & ATS Sessions")
+    st.markdown("<div class='gradient-text' style='font-size: 2rem;'>Performance & History Insights</div>", unsafe_allow_html=True)
     
     # Reload button
-    if st.button("🔄 Sync History"):
+    if st.button("🔄 Sync History", key="sync_history_btn"):
         st.rerun()
         
+    # 1. FETCH AND RENDER PERFORMANCE PROFILE
+    try:
+        profile_resp = requests.get(
+            f"{BACKEND_URL}/api/performance/profile",
+            headers=get_auth_headers()
+        )
+        if profile_resp.status_code == 200:
+            profile_data = profile_resp.json()
+            st.markdown("### 📈 Your Performance Profile")
+            
+            p_col1, p_col2, p_col3 = st.columns(3, gap="medium")
+            with p_col1:
+                st.markdown("<div class='premium-card' style='text-align: center; height: 100%;'>", unsafe_allow_html=True)
+                st.markdown("##### Adaptive Difficulty")
+                diff_lvl = profile_data.get("difficulty_level", "Beginner")
+                if diff_lvl == "Advanced":
+                    diff_style = "color: #f87171; font-weight: bold; font-size: 1.8rem;"
+                elif diff_lvl == "Intermediate":
+                    diff_style = "color: #fbbf24; font-weight: bold; font-size: 1.8rem;"
+                else:
+                    diff_style = "color: #34d399; font-weight: bold; font-size: 1.8rem;"
+                st.markdown(f"<div style='margin-top: 15px; {diff_style}'>{diff_lvl}</div>", unsafe_allow_html=True)
+                st.markdown("</div>", unsafe_allow_html=True)
+                
+            with p_col2:
+                st.markdown("<div class='premium-card' style='height: 100%;'>", unsafe_allow_html=True)
+                st.markdown("##### 💪 Strongest Topics")
+                strongs = profile_data.get("strong_topics", [])
+                if strongs:
+                    for s in strongs:
+                        st.markdown(f"<span class='concept-tag' style='background-color: rgba(16, 185, 129, 0.12); color: #34d399; border-color: rgba(16, 185, 129, 0.25);'>{s}</span>", unsafe_allow_html=True)
+                else:
+                    st.write("*No strong areas established yet.*")
+                st.markdown("</div>", unsafe_allow_html=True)
+                
+            with p_col3:
+                st.markdown("<div class='premium-card' style='height: 100%;'>", unsafe_allow_html=True)
+                st.markdown("##### ⚠️ Weakest Topics")
+                weaks = profile_data.get("weak_topics", [])
+                if weaks:
+                    for w in weaks:
+                        st.markdown(f"<span class='concept-tag' style='background-color: rgba(239, 68, 68, 0.12); color: #f87171; border-color: rgba(239, 68, 68, 0.25);'>{w}</span>", unsafe_allow_html=True)
+                else:
+                    st.write("*No weak areas detected yet! Keep practicing.*")
+                st.markdown("</div>", unsafe_allow_html=True)
+                
+            topic_scores = profile_data.get("topic_scores", [])
+            if topic_scores:
+                st.markdown("##### 📊 Topic-wise Score Breakdown")
+                t_names = [ts["topic"] for ts in topic_scores]
+                t_avgs = [ts["avg_score"] for ts in topic_scores]
+                
+                chart_df = pd.DataFrame({
+                    "Topic": t_names,
+                    "Average Score": t_avgs
+                }).set_index("Topic")
+                st.bar_chart(chart_df)
+            else:
+                st.info("Complete an interview session to see your topic-wise score breakdown.")
+
+            st.markdown("<div class='premium-card'>", unsafe_allow_html=True)
+            st.markdown("##### 🚀 Personalized Practice & Revision Plan")
+            suggestions = profile_data.get("practice_suggestions", [])
+            for sug in suggestions:
+                st.markdown(f"- {sug}")
+            st.markdown("</div>", unsafe_allow_html=True)
+            
+            st.markdown("---")
+            
+        else:
+            st.error("Failed to load your performance profile.")
+    except Exception as e:
+        st.error(f"Cannot load performance profile: {e}")
+
+    # 2. RENDER PAST SESSIONS HISTORY LOG
+    st.markdown("### 📜 Past Sessions History Log")
     try:
         resp = requests.get(
             f"{BACKEND_URL}/api/history/sessions",
@@ -814,6 +915,31 @@ with tab_history:
                                 st.markdown("</div>", unsafe_allow_html=True)
                                 
                             st.markdown("---")
+                            
+                            if report_db:
+                                col_hr1, col_hr2 = st.columns(2, gap="medium")
+                                with col_hr1:
+                                    st.markdown("<div class='premium-card' style='height: 100%;'>", unsafe_allow_html=True)
+                                    st.markdown("##### 📚 Recommended Topics to Revise")
+                                    if report_db.get('topics_to_revise'):
+                                        for topic in report_db.get('topics_to_revise', []):
+                                            st.markdown(f"<span class='concept-tag' style='background-color: rgba(239, 68, 68, 0.12); color: #f87171; border-color: rgba(239, 68, 68, 0.25);'>{topic}</span>", unsafe_allow_html=True)
+                                    else:
+                                        st.write("*No revision topics specified.*")
+                                    st.markdown("##### Concepts to Strengthen:")
+                                    if report_db.get('concepts_to_strengthen'):
+                                        for concept in report_db.get('concepts_to_strengthen', []):
+                                            st.markdown(f"<div class='weakness-item' style='border-left-color: #ef4444; background: rgba(239, 68, 68, 0.04);'>🔍 {concept}</div>", unsafe_allow_html=True)
+                                    else:
+                                        st.write("*No concepts specified.*")
+                                    st.markdown("</div>", unsafe_allow_html=True)
+                                    
+                                with col_hr2:
+                                    st.markdown("<div class='premium-card' style='height: 100%;'>", unsafe_allow_html=True)
+                                    st.markdown("##### 🎯 Focus for Next Mock Session")
+                                    st.write(report_db.get('suggested_focus', ''))
+                                    st.markdown("</div>", unsafe_allow_html=True)
+                                st.markdown("---")
                             
                             # Trend graph
                             scores_db = [q["score"] for q in questions_db if q.get("score") is not None]

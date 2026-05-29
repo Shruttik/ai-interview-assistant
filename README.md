@@ -2,20 +2,23 @@
 
 A production-ready, full-stack AI Interview Coach built with **FastAPI** and **Streamlit** powered by **Google Gemini**. This project is designed for software developers looking to practice technical/behavioral mock interviews and optimize their resumes for Applicant Tracking Systems (ATS).
 
-It features secure **JWT user authentication**, a local relational **SQLite database**, **ATS keyword profiling**, **adaptive question difficulty loops**, and **interactive performance tracking dashboards**.
+It features secure **JWT user authentication**, a local relational **SQLite database**, **ATS keyword profiling**, **adaptive question difficulty loops**, **anti-redundancy filters**, and **interactive performance tracking dashboards**.
 
 ---
 
 ## Key Features
 
-1. **🔑 Secure JWT Authentication**: Robust registration, password hashing (bcrypt), and protected stateful route protection.
+1. **🔑 Secure JWT Authentication**: Robust registration, password hashing (bcrypt), and stateful route protection.
 2. **📈 ATS Resume Optimizer**: Upload a resume alongside a target Job Description to receive compatibility scores (0-100%), skill gap audits (matched vs. missing skills), missing keyword alerts, and actionable structural advice.
 3. **🎯 Adaptive Interview Simulation**:
    - Tailored technical/behavioral questions generated dynamically based on candidate resume skills and job specifications.
+   - **Scalable Q&A Limits**: Custom interview lengths ranging from 3 up to **25 questions**.
    - **Adaptive Difficulty**: Question difficulty automatically scales (Easy ↔ Medium ↔ Hard) based on previous answer scores.
    - **Targeted Drilldown**: Prompts target weak categories (scores < 6/10) to test if candidates can clarify missing details.
+   - **Strict Anti-Redundancy**: Feeds previously asked questions back to the generator to ensure zero duplication across long simulations.
 4. **📊 Analytics Dashboard**: Renders overall score cards, executive suitability summaries, key strengths vs. focus areas, and interactive score progression charts.
-5. **📜 Session History Portal**: Browse past interview transcripts, review detailed feedback metrics, and track progress over time.
+5. **📈 Performance & Revision Profile**: Tracks candidate grades per subject area (OOP, SQL, DSA, OS, Networks, Python, Java) in the database, displays badges for strong and weak areas, plots topic-wise score averages, and delivers customized study/revision recommendations.
+6. **📜 Session History Portal**: Browse past interview transcripts, review detailed feedback metrics, and track progress over time.
 
 ---
 
@@ -33,6 +36,7 @@ graph TD
         API[FastAPI Main]
         AuthRoute[Auth Router /api/auth]
         CoachRoute[Interview Router /api/interview]
+        PerfRoute[Performance Router /api/performance]
         HistRoute[History Router /api/history]
         LLM[LLM Service / Gemini SDK]
         PDF[Resume Parser Service]
@@ -45,12 +49,14 @@ graph TD
     UI -->|Bearer JWT Header| API
     API --> AuthRoute
     API --> CoachRoute
+    API --> PerfRoute
     API --> HistRoute
     CoachRoute --> LLM
     CoachRoute --> PDF
     AuthRoute -->|CRUD Operations| DB
     CoachRoute -->|Persist Sessions & Q&A| DB
     HistRoute -->|Fetch Session Lists & Transcripts| DB
+    PerfRoute -->|Read Topic Scores & Profiles| DB
 ```
 
 ### Relational Database Schema
@@ -59,7 +65,9 @@ The database runs locally on SQLite using SQLAlchemy for migrations, making it c
 * **`User`**: Account email and hashed password (bcrypt).
 * **`InterviewSession`**: Target role metadata, resume text, ATS score, matched/missing skills, missing keywords, and recommendations.
 * **`InterviewQuestion`**: Questions, target concepts, difficulty, candidate answers, score grades (1-10), strengths, weaknesses, and reference model answers.
-* **`InterviewReport`**: Final overall score, executive summary, top strengths, top improvement areas, and coach suggestions.
+* **`InterviewReport`**: Final overall score, executive summary, top strengths, top improvement areas, revision topics, concepts to strengthen, suggested focus, and coach suggestions.
+* **`UserTopicScore`**: Dynamic running score tracking per topic (OOP, DSA, SQL, DBMS, networks, OS, Python, Java).
+* **`PerformanceTracking`**: Dynamic user performance profile tracking weak topics, strong topics, and active difficulty level.
 
 ---
 
@@ -124,12 +132,15 @@ All requests must include the header `Authorization: Bearer <JWT_TOKEN>`.
 ### Interviews & ATS
 * **`POST /api/interview/session/start`**: Starts a mock interview session. Expects form-data: `job_title`, `job_description`, `max_questions`, and `file` (resume upload). Returns a `session_id`, parsed resume details, and the first question.
 * **`POST /api/interview/session/{session_id}/answer`**: Submits a response. Evaluates the candidate's answer and returns the score card alongside the next question (or `null` if completed).
-* **`POST /api/interview/session/{session_id}/finalize`**: Finalizes the session, aggregates question scores, and yields the final report dashboard.
-* **`POST /api/interview/resume/ats-analyze`**: Performs an standalone ATS optimization scan.
+* **`POST /api/interview/session/{session_id}/finalize`**: Finalizes the session, aggregates question scores, updates performance profiles, and yields the final report.
+* **`POST /api/interview/resume/ats-analyze`**: Performs a standalone ATS optimization scan.
+
+### Performance Analytics
+* **`GET /api/performance/profile`**: Returns the candidate's aggregated topic performance profile, including badges for strong/weak topics, average score breakdown data, active difficulty tier, and tailored study recommendations.
 
 ### History & Portal
 * **`GET /api/history/sessions`**: Fetches all past sessions for the active user.
-* **`GET /api/history/session/{session_id}`**: Fetches full transcripts and reports for a past session.
+* **`GET /api/history/session/{session_id}`**: Fetches full transcripts, reports, and AI revision focus items for a past session.
 
 ---
 

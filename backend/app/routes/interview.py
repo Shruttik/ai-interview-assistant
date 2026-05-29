@@ -1,12 +1,13 @@
 import os
 import shutil
 from typing import List, Dict, Optional, Any
+from datetime import datetime
 from fastapi import APIRouter, UploadFile, File, Form, Header, HTTPException, status, Depends
 from sqlalchemy.orm import Session
 
 from backend.app.config import settings
 from backend.app.database import get_db
-from backend.app.models import User, InterviewSession, InterviewQuestion, InterviewReport
+from backend.app.models import User, InterviewSession, InterviewQuestion, InterviewReport, UserTopicScore, PerformanceTracking
 from backend.app.schemas import (
     SessionResponse, 
     QuestionResponse, 
@@ -80,6 +81,13 @@ async def start_interview_session(
         db.commit()
         db.refresh(session)
         
+        # Fetch performance profile for adaptive context
+        profile = db.query(PerformanceTracking).filter(
+            PerformanceTracking.user_id == current_user.id
+        ).first()
+        weak_topics = profile.weak_topics if profile else []
+        strong_topics = profile.strong_topics if profile else []
+
         # Generate first question
         first_q = llm_service.generate_question(
             job_title=job_title,
@@ -87,6 +95,8 @@ async def start_interview_session(
             resume_skills=resume_analysis.skills,
             history=[],
             previous_evaluations=[],
+            weak_topics=weak_topics,
+            strong_topics=strong_topics,
             api_key=x_gemini_api_key
         )
         
@@ -293,6 +303,13 @@ async def submit_session_answer(
             # Build resume skills list (rough fallback split)
             resume_skills = [s.strip() for s in session.resume_text.split("\n") if len(s.strip()) < 50][:15]
             
+            # Fetch performance profile for adaptive context
+            profile = db.query(PerformanceTracking).filter(
+                PerformanceTracking.user_id == current_user.id
+            ).first()
+            weak_topics = profile.weak_topics if profile else []
+            strong_topics = profile.strong_topics if profile else []
+
             # Generate next question with adaptive difficulty/weak topics
             next_q = llm_service.generate_question(
                 job_title=session.job_title,
@@ -300,6 +317,8 @@ async def submit_session_answer(
                 resume_skills=resume_skills,
                 history=history,
                 previous_evaluations=previous_evals,
+                weak_topics=weak_topics,
+                strong_topics=strong_topics,
                 api_key=x_gemini_api_key
             )
             
@@ -401,14 +420,103 @@ def finalize_session(
             api_key=x_gemini_api_key
         )
         
-        # Save report to DB
+        # Update UserTopicScore and PerformanceTracking dynamically
+        topic_aggregations = {}
+        for q in questions:
+            if not q.focus_area or q.score is None:
+                continue
+            # Clean topic name and map to standard categories
+            topic = q.focus_area.strip()
+            t_upper = topic.upper()
+            mapped_topic = topic # default
+            for standard_topic in ["OOP", "DBMS", "SQL", "Operating Systems", "Computer Networks", "DSA", "Python", "Java"]:
+                if standard_topic.upper() in t_upper or (standard_topic == "Operating Systems" and "OS" in t_upper):
+                    mapped_topic = standard_topic
+                    break
+            
+            if mapped_topic not in topic_aggregations:
+                topic_aggregations[mapped_topic] = {"total_score": 0, "count": 0}
+            topic_aggregations[mapped_topic]["total_score"] += q.score
+            topic_aggregations[mapped_topic]["count"] += 1
+
+        # Save/update UserTopicScore in database
+        for topic_name, data in topic_aggregations.items():
+            db_score = db.query(UserTopicScore).filter(
+                UserTopicScore.user_id == current_user.id,
+                UserTopicScore.topic == topic_name
+            ).first()
+            if db_score:
+                db_score.total_score += data["total_score"]
+                db_score.question_count += data["count"]
+                db_score.avg_score = db_score.total_score / db_score.question_count
+                db_score.last_updated = datetime.utcnow()
+            else:
+                db_score = UserTopicScore(
+                    user_id=current_user.id,
+                    topic=topic_name,
+                    total_score=data["total_score"],
+                    question_count=data["count"],
+                    avg_score=data["total_score"] / data["count"],
+                    last_updated=datetime.utcnow()
+                )
+                db.add(db_score)
+
+        # Recalculate PerformanceTracking weak/strong areas and difficulty level
+        all_scores = db.query(UserTopicScore).filter(
+            UserTopicScore.user_id == current_user.id
+        ).all()
+        
+        weak_topics_list = []
+        strong_topics_list = []
+        overall_avg_sum = 0.0
+        
+        if all_scores:
+            for s in all_scores:
+                overall_avg_sum += s.avg_score
+                if s.avg_score < 6.0:
+                    weak_topics_list.append(s.topic)
+                elif s.avg_score >= 8.0:
+                    strong_topics_list.append(s.topic)
+            
+            overall_avg = overall_avg_sum / len(all_scores)
+            if overall_avg >= 8.0:
+                difficulty_level = "Advanced"
+            elif overall_avg >= 6.0:
+                difficulty_level = "Intermediate"
+            else:
+                difficulty_level = "Beginner"
+        else:
+            difficulty_level = "Beginner"
+
+        profile_record = db.query(PerformanceTracking).filter(
+            PerformanceTracking.user_id == current_user.id
+        ).first()
+        if profile_record:
+            profile_record.weak_topics = weak_topics_list
+            profile_record.strong_topics = strong_topics_list
+            profile_record.difficulty_level = difficulty_level
+            profile_record.last_updated = datetime.utcnow()
+        else:
+            profile_record = PerformanceTracking(
+                user_id=current_user.id,
+                weak_topics=weak_topics_list,
+                strong_topics=strong_topics_list,
+                difficulty_level=difficulty_level,
+                last_updated=datetime.utcnow()
+            )
+            db.add(profile_record)
+
+        # Save report to DB with AI recommendations
         db_report = InterviewReport(
             session_id=session_id,
             overall_score=final_report.overall_score,
             summary=final_report.summary,
             key_strengths=final_report.key_strengths,
             improvement_areas=final_report.improvement_areas,
-            recommendations=final_report.recommendations
+            recommendations=final_report.recommendations,
+            topics_to_revise=final_report.topics_to_revise,
+            concepts_to_strengthen=final_report.concepts_to_strengthen,
+            suggested_focus=final_report.suggested_focus
         )
         db.add(db_report)
         db.commit()

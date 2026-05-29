@@ -6,7 +6,7 @@ from backend.app.config import settings
 from backend.app.utils.logger import logger
 from backend.app.utils.helpers import ensure_directory_exists
 from backend.app.database import engine, Base
-from backend.app.routes import auth, interview, history
+from backend.app.routes import auth, interview, history, performance
 
 # Create all database tables on application launch (automatic migrations)
 try:
@@ -67,6 +67,7 @@ async def startup_event():
 app.include_router(auth.router, prefix="/api")
 app.include_router(interview.router, prefix="/api")
 app.include_router(history.router, prefix="/api")
+app.include_router(performance.router, prefix="/api")
 
 @app.get("/", tags=["health"])
 async def root():

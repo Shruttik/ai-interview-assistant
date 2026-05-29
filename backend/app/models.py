@@ -1,5 +1,5 @@
 from datetime import datetime
-from sqlalchemy import Column, Integer, String, Text, DateTime, ForeignKey, JSON
+from sqlalchemy import Column, Integer, String, Text, DateTime, ForeignKey, JSON, Float
 from sqlalchemy.orm import relationship
 from backend.app.database import Base
 
@@ -89,8 +89,40 @@ class InterviewReport(Base):
     key_strengths = Column(JSON, nullable=False)
     improvement_areas = Column(JSON, nullable=False)
     recommendations = Column(JSON, nullable=False)
+    topics_to_revise = Column(JSON, nullable=True)
+    concepts_to_strengthen = Column(JSON, nullable=True)
+    suggested_focus = Column(Text, nullable=True)
     
     created_at = Column(DateTime, default=datetime.utcnow)
 
     # Relationships
     session = relationship("InterviewSession", back_populates="report")
+
+
+class UserTopicScore(Base):
+    """
+    Stores aggregated performance per technical topic for a user.
+    """
+    __tablename__ = "user_topic_scores"
+
+    id = Column(Integer, primary_key=True, index=True)
+    user_id = Column(Integer, ForeignKey("users.id", ondelete="CASCADE"), nullable=False)
+    topic = Column(String, nullable=False)
+    total_score = Column(Integer, default=0, nullable=False)
+    question_count = Column(Integer, default=0, nullable=False)
+    avg_score = Column(Float, default=0.0, nullable=False)
+    last_updated = Column(DateTime, default=datetime.utcnow)
+
+
+class PerformanceTracking(Base):
+    """
+    Tracks overall user proficiency level, weak areas, and strong areas.
+    """
+    __tablename__ = "performance_tracking"
+
+    id = Column(Integer, primary_key=True, index=True)
+    user_id = Column(Integer, ForeignKey("users.id", ondelete="CASCADE"), unique=True, nullable=False)
+    weak_topics = Column(JSON, nullable=True)  # List of weak topics (JSON list of strings)
+    strong_topics = Column(JSON, nullable=True)  # List of strong topics (JSON list of strings)
+    difficulty_level = Column(String, default="Beginner", nullable=False)
+    last_updated = Column(DateTime, default=datetime.utcnow)

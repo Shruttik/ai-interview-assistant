@@ -78,6 +78,9 @@ class FinalReportResponse(BaseModel):
     key_strengths: List[str]
     improvement_areas: List[str]
     recommendations: List[str]
+    topics_to_revise: List[str]
+    concepts_to_strengthen: List[str]
+    suggested_focus: str
 
     class Config:
         from_attributes = True
@@ -123,3 +126,33 @@ class SessionDetailResponse(SessionResponse):
 
     class Config:
         from_attributes = True
+
+
+class UserTopicScoreResponse(BaseModel):
+    topic: str
+    total_score: int
+    question_count: int
+    avg_score: float
+    last_updated: datetime
+
+    class Config:
+        from_attributes = True
+
+
+class PerformanceTrackingResponse(BaseModel):
+    weak_topics: List[str]
+    strong_topics: List[str]
+    difficulty_level: str
+    last_updated: datetime
+
+    class Config:
+        from_attributes = True
+
+
+class UserPerformanceProfile(BaseModel):
+    difficulty_level: str
+    weak_topics: List[str]
+    strong_topics: List[str]
+    topic_scores: List[UserTopicScoreResponse]
+    practice_suggestions: List[str]
+    recommended_topics: List[str]

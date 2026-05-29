@@ -43,6 +43,9 @@ class FinalReport(BaseModel):
     key_strengths: List[str] = Field(description="Top 3 key strengths demonstrated during the interview.")
     improvement_areas: List[str] = Field(description="Top 3 areas where the candidate needs to improve.")
     recommendations: List[str] = Field(description="Actionable next steps or learning suggestions for the candidate.")
+    topics_to_revise: List[str] = Field(description="Specific high-level topics the candidate should revise (e.g. ['DBMS', 'SQL', 'OOP']).")
+    concepts_to_strengthen: List[str] = Field(description="Concrete concepts within those topics to strengthen (e.g. ['Index optimization', 'Inheritance vs Composition']).")
+    suggested_focus: str = Field(description="Suggested focus for their next mock interview session.")
 
 # ---------------------------------------------------------------------------
 # Core LLM Service
@@ -158,18 +161,21 @@ class LLMService:
         resume_skills: List[str],
         history: List[Dict[str, str]],
         previous_evaluations: List[Dict[str, Any]],
+        weak_topics: Optional[List[str]] = None,
+        strong_topics: Optional[List[str]] = None,
         api_key: Optional[str] = None
     ) -> InterviewQuestion:
         """
         Generates the next interview question adaptively.
         Determines difficulty based on previous score averages.
-        Drills down into weak topics (score < 6) if found, otherwise broadens coverage.
+        Prioritizes weak topics (score < 6 or tracked in weak_topics) and avoids strong topics.
+        Enforces strict anti-redundancy checks to ensure distinct questions.
         """
         client = self._get_client(api_key)
         
         # 1. Calculate current average score to determine adaptive difficulty
         difficulty = "Medium"
-        weak_topics = []
+        session_weak_topics = []
         
         if previous_evaluations:
             scores = [e["score"] for e in previous_evaluations if e.get("score") is not None]
@@ -183,28 +189,47 @@ class LLMService:
                 else:
                     difficulty = "Medium"
             
-            # Find weak areas (where score was less than 6/10)
+            # Find weak areas in the current session
             for eval_item in previous_evaluations:
                 if eval_item.get("score") is not None and eval_item["score"] < 6:
-                    weak_topics.append({
-                        "question": eval_item.get("question"),
-                        "focus_area": eval_item.get("focus_area"),
-                        "weaknesses": eval_item.get("weaknesses", [])
-                    })
+                    if eval_item.get("focus_area"):
+                        session_weak_topics.append(eval_item["focus_area"])
+
+        # Combine tracked weak topics with session-specific weak topics
+        active_weak_topics = list(set((weak_topics or []) + session_weak_topics))
+        active_strong_topics = strong_topics or []
 
         # 2. Formulate the adaptive instructions
-        adaptive_guideline = ""
-        if weak_topics:
-            topics_desc = ", ".join([w["focus_area"] for w in weak_topics if w.get("focus_area")])
-            adaptive_guideline = (
-                f"ADAPTIVE LOGIC: The candidate struggled in previous questions on the following focus areas: [{topics_desc}]. "
-                f"Please generate a follow-up question at the '{difficulty}' difficulty level that targets these weak technical areas "
-                f"or related fundamental principles to see if they can clarify their understanding."
+        adaptive_guideline = f"ADAPTIVE DIFFICULTY LEVEL: {difficulty}\n"
+        if active_weak_topics:
+            topics_desc = ", ".join(active_weak_topics)
+            adaptive_guideline += (
+                f"ADAPTIVE TOPIC SELECTION: The candidate has demonstrated weaknesses in: [{topics_desc}]. "
+                f"Generate a question at the '{difficulty}' level that tests one of these weak areas (or a related concept) "
+                f"to check for improvement. Focus about 60% of your selection probability on these areas."
             )
         else:
-            adaptive_guideline = (
-                f"ADAPTIVE LOGIC: The candidate is performing well. Please generate a new technical or behavioral question "
-                f"at the '{difficulty}' difficulty level covering a different skill listed in their resume, matching the job description."
+            adaptive_guideline += (
+                f"ADAPTIVE TOPIC SELECTION: The candidate is performing well. Generate a new question "
+                f"at the '{difficulty}' level testing a new topic from their resume skills or the job description."
+            )
+
+        if active_strong_topics:
+            strong_desc = ", ".join(active_strong_topics)
+            adaptive_guideline += f"\nAvoid testing areas where the candidate is already highly proficient: [{strong_desc}]."
+
+        # Extract previously asked questions to prevent duplication
+        asked_questions = [h["text"] for h in history if h.get("role") == "interviewer"]
+        anti_redundancy_block = ""
+        if asked_questions:
+            questions_list_str = "\n".join([f"- {q}" for q in asked_questions])
+            anti_redundancy_block = (
+                "CRITICAL ANTI-REDUNDANCY REQUIREMENT:\n"
+                "You MUST NOT generate any question that matches, duplicates, or closely resembles the topics, "
+                "structures, or technical angles of any questions already asked in this session. "
+                "Here are the previously asked questions:\n"
+                f"{questions_list_str}\n"
+                "Please generate a fresh, distinct question testing a different technical concept or behavioral scenario."
             )
 
         # Build transcript context
@@ -224,8 +249,9 @@ class LLMService:
             f"Previous Interview Transcript:\n"
             f"{conversation_context}\n\n"
             f"{adaptive_guideline}\n\n"
+            f"{anti_redundancy_block}\n\n"
             "Generate the next question as a valid JSON object matching the requested schema. "
-            "Ensure the question aligns with the selected difficulty and focus area."
+            "Ensure the question is creative, professional, and strictly different from the previous questions."
         )
 
         try:
@@ -301,6 +327,7 @@ class LLMService:
     ) -> FinalReport:
         """
         Aggregates all individual question evaluations to write a comprehensive performance review.
+        Suggests key revision topics, concepts to strengthen, and next focus areas.
         """
         client = self._get_client(api_key)
         
@@ -332,7 +359,11 @@ class LLMService:
             "Please read the log. Aggregate the scores to form a balanced final overview. "
             "Deliver an overall score out of 10, a professional summary of the candidate's suitability "
             "for the role, their top 3 overall strengths, top 3 target areas for improvement, "
-            "and direct, actionable advice or next steps to prepare for actual interviews."
+            "and direct, actionable advice or next steps to prepare for actual interviews. "
+            "Additionally, you must output:\n"
+            "1. topics_to_revise: A list of 2-4 core subject areas (like 'OOP', 'SQL', 'DBMS', 'Operating Systems', 'Computer Networks', 'DSA', 'Python', 'Java') where performance was weak or incomplete.\n"
+            "2. concepts_to_strengthen: A list of 3-5 specific, concrete concepts within those topics they should review (e.g. ['Index structures', 'Garbage collection', 'Polymorphism']).\n"
+            "3. suggested_focus: A single sentence recommending the focus of their next interview session based on their weakest topics."
         )
 
         try:
