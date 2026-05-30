@@ -15,296 +15,605 @@ st.set_page_config(
     initial_sidebar_state="expanded"
 )
 
+# Theme state initialization
+if "app_theme" not in st.session_state:
+    st.session_state.app_theme = "Light"
+
+# Top Right Theme Switcher Layout
+col_header_space, col_theme_toggle = st.columns([8, 1.3])
+with col_theme_toggle:
+    theme_choice = st.selectbox(
+        "Theme Select",
+        options=["Light Mode", "Dark Mode"],
+        index=0 if st.session_state.app_theme == "Light" else 1,
+        label_visibility="collapsed",
+        key="global_theme_selector"
+    )
+    selected_theme = theme_choice.split(" ")[0]
+    if selected_theme != st.session_state.app_theme:
+        st.session_state.app_theme = selected_theme
+        st.rerun()
+
 # ---------------------------------------------------------------------------
 # Visual Themes & CSS Injector (Aesthetics & Premium Polish)
 # ---------------------------------------------------------------------------
-CUSTOM_CSS = """
-<style>
-@import url('https://fonts.googleapis.com/css2?family=Outfit:wght@300;400;600;700&display=swap');
+if st.session_state.app_theme == "Dark":
+    CUSTOM_CSS = """
+    <style>
+    @import url('https://fonts.googleapis.com/css2?family=Outfit:wght@300;400;600;700&display=swap');
 
-/* Force Light Green-White Theme globally */
-.stApp {
-    background-color: #f7faf8 !important;
-    color: #1e293b !important;
-}
+    /* Force Dark Theme globally */
+    .stApp {
+        background-color: #0b130e !important;
+        color: #f1f5f3 !important;
+    }
 
-html, body, [class*="css"], .stMarkdown {
-    font-family: 'Outfit', sans-serif;
-}
+    html, body, [class*="css"], .stMarkdown {
+        font-family: 'Outfit', sans-serif;
+    }
 
-/* Sidebar Styling */
-[data-testid="stSidebar"] {
-    background-color: #ffffff !important;
-    border-right: 1px solid #e6f0eb !important;
-}
-[data-testid="stSidebar"] .stMarkdown, 
-[data-testid="stSidebar"] p, 
-[data-testid="stSidebar"] label, 
-[data-testid="stSidebar"] span {
-    color: #2c3e50 !important;
-}
+    /* Sidebar Styling */
+    [data-testid="stSidebar"] {
+        background-color: #0f1c15 !important;
+        border-right: 1px solid #1a2f24 !important;
+    }
+    [data-testid="stSidebar"] .stMarkdown, 
+    [data-testid="stSidebar"] p, 
+    [data-testid="stSidebar"] label, 
+    [data-testid="stSidebar"] span {
+        color: #cbd5e1 !important;
+    }
 
-/* Titles and Headers */
-h1, h2, h3, h4, h5, h6 {
-    color: #0f291e !important;
-    font-weight: 700 !important;
-}
+    /* Titles and Headers */
+    h1, h2, h3, h4, h5, h6 {
+        color: #f1f5f3 !important;
+        font-weight: 700 !important;
+    }
 
-/* Gradient Header Title */
-.gradient-text {
-    background: linear-gradient(90deg, #0f5132, #10b981, #059669);
-    -webkit-background-clip: text;
-    -webkit-text-fill-color: transparent;
-    font-weight: 800;
-    font-size: 2.8rem;
-    margin-bottom: 0.2rem;
-    text-align: center;
-}
+    /* Gradient Header Title */
+    .gradient-text {
+        background: linear-gradient(90deg, #10b981, #34d399, #059669);
+        -webkit-background-clip: text;
+        -webkit-text-fill-color: transparent;
+        font-weight: 800;
+        font-size: 2.8rem;
+        margin-bottom: 0.2rem;
+        text-align: center;
+    }
 
-.gradient-subtext {
-    font-size: 1.15rem;
-    color: #475569;
-    text-align: center;
-    margin-bottom: 1.8rem;
-}
+    .gradient-subtext {
+        font-size: 1.15rem;
+        color: #94a3b8;
+        text-align: center;
+        margin-bottom: 1.8rem;
+    }
 
-/* Custom styled Card containers */
-.premium-card {
-    background: #ffffff !important;
-    border: 1px solid #e2ece9 !important;
-    border-radius: 16px;
-    padding: 24px;
-    margin-bottom: 20px;
-    box-shadow: 0 4px 20px rgba(16, 185, 129, 0.05);
-    transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
-}
+    /* Custom styled Card containers (and Streamlit border blocks) */
+    .premium-card, div[data-testid="stVerticalBlockBorder"] {
+        background: #0f1c15 !important;
+        border: 1px solid #1a2f24 !important;
+        border-radius: 16px !important;
+        padding: 24px !important;
+        margin-bottom: 20px !important;
+        box-shadow: 0 4px 20px rgba(0, 0, 0, 0.25) !important;
+        transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1) !important;
+    }
 
-.premium-card:hover {
-    border-color: rgba(16, 185, 129, 0.3) !important;
-    box-shadow: 0 10px 25px rgba(16, 185, 129, 0.08);
-    transform: translateY(-2px);
-}
+    .premium-card:hover, div[data-testid="stVerticalBlockBorder"]:hover {
+        border-color: rgba(16, 185, 129, 0.4) !important;
+        box-shadow: 0 10px 25px rgba(16, 185, 129, 0.15) !important;
+        transform: translateY(-2px);
+    }
 
-/* Badge highlights */
-.concept-tag {
-    display: inline-block;
-    background-color: #f0fdf4 !important;
-    color: #15803d !important;
-    border: 1px solid #bbf7d0 !important;
-    border-radius: 20px;
-    padding: 4px 12px;
-    font-size: 0.82rem;
-    margin-right: 6px;
-    margin-bottom: 6px;
-    font-weight: 500;
-}
+    /* Badge highlights */
+    .concept-tag {
+        display: inline-block;
+        background-color: rgba(16, 185, 129, 0.15) !important;
+        color: #34d399 !important;
+        border: 1px solid rgba(16, 185, 129, 0.3) !important;
+        border-radius: 20px;
+        padding: 4px 12px;
+        font-size: 0.82rem;
+        margin-right: 6px;
+        margin-bottom: 6px;
+        font-weight: 500;
+    }
 
-.difficulty-easy {
-    background-color: #f0fdf4 !important;
-    color: #166534 !important;
-    border: 1px solid #bbf7d0 !important;
-    border-radius: 20px;
-    padding: 3px 10px;
-    font-size: 0.8rem;
-    font-weight: 600;
-}
+    .difficulty-easy {
+        background-color: rgba(52, 211, 153, 0.15) !important;
+        color: #34d399 !important;
+        border: 1px solid rgba(52, 211, 153, 0.3) !important;
+        border-radius: 20px;
+        padding: 3px 10px;
+        font-size: 0.8rem;
+        font-weight: 600;
+    }
 
-.difficulty-medium {
-    background-color: #fffbeb !important;
-    color: #92400e !important;
-    border: 1px solid #fef3c7 !important;
-    border-radius: 20px;
-    padding: 3px 10px;
-    font-size: 0.8rem;
-    font-weight: 600;
-}
+    .difficulty-medium {
+        background-color: rgba(245, 158, 11, 0.15) !important;
+        color: #fbbf24 !important;
+        border: 1px solid rgba(245, 158, 11, 0.3) !important;
+        border-radius: 20px;
+        padding: 3px 10px;
+        font-size: 0.8rem;
+        font-weight: 600;
+    }
 
-.difficulty-hard {
-    background-color: #fef2f2 !important;
-    color: #991b1b !important;
-    border: 1px solid #fee2e2 !important;
-    border-radius: 20px;
-    padding: 3px 10px;
-    font-size: 0.8rem;
-    font-weight: 600;
-}
+    .difficulty-hard {
+        background-color: rgba(239, 68, 68, 0.15) !important;
+        color: #f87171 !important;
+        border: 1px solid rgba(239, 68, 68, 0.3) !important;
+        border-radius: 20px;
+        padding: 3px 10px;
+        font-size: 0.8rem;
+        font-weight: 600;
+    }
 
-/* Large Score display circle */
-.score-circle-container {
-    display: flex;
-    flex-direction: column;
-    align-items: center;
-    justify-content: center;
-    margin: 20px 0;
-}
+    /* Large Score display circle */
+    .score-circle-container {
+        display: flex;
+        flex-direction: column;
+        align-items: center;
+        justify-content: center;
+        margin: 20px 0;
+    }
 
-.score-circle {
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    width: 130px;
-    height: 130px;
-    border-radius: 50%;
-    background: linear-gradient(135deg, #059669, #10b981);
-    color: white !important;
-    font-size: 3.2rem;
-    font-weight: 800;
-    box-shadow: 0 10px 25px rgba(16, 185, 129, 0.25);
-    position: relative;
-    transition: transform 0.3s ease;
-}
+    .score-circle {
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        width: 130px;
+        height: 130px;
+        border-radius: 50%;
+        background: linear-gradient(135deg, #059669, #10b981);
+        color: white !important;
+        font-size: 3.2rem;
+        font-weight: 800;
+        box-shadow: 0 10px 25px rgba(16, 185, 129, 0.4);
+        position: relative;
+        transition: transform 0.3s ease;
+    }
 
-.score-circle:hover {
-    transform: scale(1.05) rotate(3deg);
-}
+    .score-circle:hover {
+        transform: scale(1.05) rotate(3deg);
+    }
 
-.score-label {
-    margin-top: 12px;
-    font-size: 1rem;
-    font-weight: 600;
-    color: #475569;
-    text-transform: uppercase;
-    letter-spacing: 0.08em;
-}
+    .score-label {
+        margin-top: 12px;
+        font-size: 1rem;
+        font-weight: 600;
+        color: #94a3b8;
+        text-transform: uppercase;
+        letter-spacing: 0.08em;
+    }
 
-/* Success/Strength items list */
-.strength-item {
-    border-left: 4px solid #10b981;
-    background: #f0fdf4 !important;
-    color: #14532d !important;
-    padding: 10px 16px;
-    margin-bottom: 8px;
-    border-radius: 0 8px 8px 0;
-    font-size: 0.95rem;
-    font-weight: 500;
-}
+    /* Success/Strength items list */
+    .strength-item {
+        border-left: 4px solid #10b981;
+        background: rgba(16, 185, 129, 0.08) !important;
+        color: #a7f3d0 !important;
+        padding: 10px 16px;
+        margin-bottom: 8px;
+        border-radius: 0 8px 8px 0;
+        font-size: 0.95rem;
+        font-weight: 500;
+    }
 
-.weakness-item {
-    border-left: 4px solid #f59e0b;
-    background: #fffbeb !important;
-    color: #78350f !important;
-    padding: 10px 16px;
-    margin-bottom: 8px;
-    border-radius: 0 8px 8px 0;
-    font-size: 0.95rem;
-    font-weight: 500;
-}
+    .weakness-item {
+        border-left: 4px solid #f59e0b;
+        background: rgba(245, 158, 11, 0.08) !important;
+        color: #fde68a !important;
+        padding: 10px 16px;
+        margin-bottom: 8px;
+        border-radius: 0 8px 8px 0;
+        font-size: 0.95rem;
+        font-weight: 500;
+    }
 
-/* Form inputs overrides */
-.stTextInput>div>div>input, 
-.stTextArea>div>div>textarea,
-.stNumberInput>div>div>input,
-.stSelectbox>div>div>div {
-    background-color: #ffffff !important;
-    border: 1px solid #cbd5e1 !important;
-    color: #1e293b !important;
-    border-radius: 8px !important;
-}
+    /* Form inputs overrides */
+    .stTextInput>div>div>input, 
+    .stTextArea>div>div>textarea,
+    .stNumberInput>div>div>input,
+    .stSelectbox>div>div>div {
+        background-color: #0f1c15 !important;
+        border: 1px solid #1a2f24 !important;
+        color: #f1f5f3 !important;
+        border-radius: 8px !important;
+    }
 
-.stTextInput>div>div>input:focus, 
-.stTextArea>div>div>textarea:focus,
-.stNumberInput>div>div>input:focus {
-    border-color: #10b981 !important;
-    box-shadow: 0 0 0 2px rgba(16, 185, 129, 0.2) !important;
-}
+    .stTextInput>div>div>input:focus, 
+    .stTextArea>div>div>textarea:focus,
+    .stNumberInput>div>div>input:focus {
+        border-color: #10b981 !important;
+        box-shadow: 0 0 0 2px rgba(16, 185, 129, 0.4) !important;
+    }
 
-/* Button UI styling updates */
-div.stButton > button {
-    background: linear-gradient(90deg, #059669, #10b981) !important;
-    color: white !important;
-    border: none !important;
-    padding: 10px 20px !important;
-    border-radius: 8px !important;
-    font-weight: 600 !important;
-    transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1) !important;
-    box-shadow: 0 4px 12px rgba(16, 185, 129, 0.15) !important;
-}
+    /* Button UI styling updates */
+    div.stButton > button {
+        background: linear-gradient(90deg, #059669, #10b981) !important;
+        color: white !important;
+        border: none !important;
+        padding: 10px 20px !important;
+        border-radius: 8px !important;
+        font-weight: 600 !important;
+        transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1) !important;
+        box-shadow: 0 4px 12px rgba(0, 0, 0, 0.3) !important;
+    }
 
-div.stButton > button:hover {
-    background: linear-gradient(90deg, #047857, #059669) !important;
-    box-shadow: 0 6px 20px rgba(16, 185, 129, 0.25) !important;
-    transform: translateY(-1.5px) !important;
-}
+    div.stButton > button:hover {
+        background: linear-gradient(90deg, #047857, #059669) !important;
+        box-shadow: 0 6px 20px rgba(16, 185, 129, 0.3) !important;
+        transform: translateY(-1.5px) !important;
+    }
 
-/* Tabs override */
-.stTabs [data-baseweb="tab-list"] {
-    gap: 8px !important;
-    background-color: transparent !important;
-}
+    /* Tabs override */
+    .stTabs [data-baseweb="tab-list"] {
+        gap: 8px !important;
+        background-color: transparent !important;
+    }
 
-.stTabs [data-baseweb="tab"] {
-    background-color: #ffffff !important;
-    border: 1px solid #e2ece9 !important;
-    border-radius: 8px 8px 0px 0px !important;
-    padding: 8px 20px !important;
-    color: #64748b !important;
-    font-weight: 600 !important;
-    transition: all 0.2s ease !important;
-}
+    .stTabs [data-baseweb="tab"] {
+        background-color: #0f1c15 !important;
+        border: 1px solid #1a2f24 !important;
+        border-radius: 8px 8px 0px 0px !important;
+        padding: 8px 20px !important;
+        color: #94a3b8 !important;
+        font-weight: 600 !important;
+        transition: all 0.2s ease !important;
+    }
 
-.stTabs [data-baseweb="tab"]:hover {
-    color: #10b981 !important;
-    border-color: #bbf7d0 !important;
-}
+    .stTabs [data-baseweb="tab"]:hover {
+        color: #10b981 !important;
+        border-color: #1a2f24 !important;
+    }
 
-.stTabs [aria-selected="true"] {
-    background-color: #e6f7ed !important;
-    color: #047857 !important;
-    border-color: #10b981 #10b981 transparent #10b981 !important;
-    border-bottom: 3px solid #10b981 !important;
-}
+    .stTabs [aria-selected="true"] {
+        background-color: #1a2f24 !important;
+        color: #34d399 !important;
+        border-color: #10b981 #10b981 transparent #10b981 !important;
+        border-bottom: 3px solid #10b981 !important;
+    }
 
-/* File uploader styling */
-[data-testid="stFileUploader"] {
-    background-color: #ffffff !important;
-    border: 1px dashed #cbd5e1 !important;
-    border-radius: 12px !important;
-    padding: 15px !important;
-}
+    /* File uploader styling */
+    [data-testid="stFileUploader"] {
+        background-color: #0f1c15 !important;
+        border: 1px dashed #1a2f24 !important;
+        border-radius: 12px !important;
+        padding: 15px !important;
+    }
 
-/* Progress bar override */
-div[data-testid="stProgress"] > div > div > div {
-    background-color: #10b981 !important;
-}
+    /* Progress bar override */
+    div[data-testid="stProgress"] > div > div > div {
+        background-color: #10b981 !important;
+    }
 
-/* Ensure all main markdown text has clear visibility and high contrast */
-.stMarkdown p, .stMarkdown li, .stMarkdown span, .stMarkdown div {
-    color: #2c3e50 !important;
-}
+    /* Ensure all main markdown text has clear visibility and high contrast */
+    .stMarkdown p, .stMarkdown li, .stMarkdown span, .stMarkdown div {
+        color: #cbd5e1 !important;
+    }
 
-/* Enforce dark forest green on widget labels */
-label[data-testid="stWidgetLabel"], .stWidgetLabel p {
-    color: #0f291e !important;
-    font-weight: 600 !important;
-}
+    /* Enforce light green on widget labels */
+    label[data-testid="stWidgetLabel"], .stWidgetLabel p {
+        color: #e2ece9 !important;
+        font-weight: 600 !important;
+    }
 
-/* Enforce high-contrast text on expanders */
-.streamlit-expanderHeader p {
-    color: #0f291e !important;
-    font-weight: 600 !important;
-}
+    /* Enforce high-contrast text on expanders */
+    .streamlit-expanderHeader p {
+        color: #f1f5f3 !important;
+        font-weight: 600 !important;
+    }
 
-/* Enforce visibility on alert descriptions */
-div[data-testid="stAlert"] {
-    background-color: #ffffff !important;
-    border-radius: 8px !important;
-    border: 1px solid #cbd5e1 !important;
-}
-div[data-testid="stAlert"] p, div[data-testid="stAlert"] span {
-    color: #1e293b !important;
-}
+    /* Enforce visibility on alert descriptions */
+    div[data-testid="stAlert"] {
+        background-color: #0f1c15 !important;
+        border-radius: 8px !important;
+        border: 1px solid #1a2f24 !important;
+    }
+    div[data-testid="stAlert"] p, div[data-testid="stAlert"] span {
+        color: #f1f5f3 !important;
+    }
 
-/* Force dropdown options text colors */
-div[data-baseweb="select"] div {
-    color: #1e293b !important;
-}
+    /* Force dropdown options text colors */
+    div[data-baseweb="select"] div {
+        color: #f1f5f3 !important;
+    }
 
-/* Fix tabs text inside p tags inheriting parent colors */
-.stTabs [data-baseweb="tab"] p {
-    color: inherit !important;
-}
-</style>
-"""
+    /* Fix tabs text inside p tags inheriting parent colors */
+    .stTabs [data-baseweb="tab"] p {
+        color: inherit !important;
+    }
+    </style>
+    """
+else:
+    # Light Mode Theme
+    CUSTOM_CSS = """
+    <style>
+    @import url('https://fonts.googleapis.com/css2?family=Outfit:wght@300;400;600;700&display=swap');
+
+    /* Force Light Green-White Theme globally */
+    .stApp {
+        background-color: #f7faf8 !important;
+        color: #1e293b !important;
+    }
+
+    html, body, [class*="css"], .stMarkdown {
+        font-family: 'Outfit', sans-serif;
+    }
+
+    /* Sidebar Styling */
+    [data-testid="stSidebar"] {
+        background-color: #ffffff !important;
+        border-right: 1px solid #e6f0eb !important;
+    }
+    [data-testid="stSidebar"] .stMarkdown, 
+    [data-testid="stSidebar"] p, 
+    [data-testid="stSidebar"] label, 
+    [data-testid="stSidebar"] span {
+        color: #2c3e50 !important;
+    }
+
+    /* Titles and Headers */
+    h1, h2, h3, h4, h5, h6 {
+        color: #0f291e !important;
+        font-weight: 700 !important;
+    }
+
+    /* Gradient Header Title */
+    .gradient-text {
+        background: linear-gradient(90deg, #0f5132, #10b981, #059669);
+        -webkit-background-clip: text;
+        -webkit-text-fill-color: transparent;
+        font-weight: 800;
+        font-size: 2.8rem;
+        margin-bottom: 0.2rem;
+        text-align: center;
+    }
+
+    .gradient-subtext {
+        font-size: 1.15rem;
+        color: #475569;
+        text-align: center;
+        margin-bottom: 1.8rem;
+    }
+
+    /* Custom styled Card containers (and Streamlit border blocks) */
+    .premium-card, div[data-testid="stVerticalBlockBorder"] {
+        background: #ffffff !important;
+        border: 1px solid #e2ece9 !important;
+        border-radius: 16px !important;
+        padding: 24px !important;
+        margin-bottom: 20px !important;
+        box-shadow: 0 4px 20px rgba(16, 185, 129, 0.05) !important;
+        transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1) !important;
+    }
+
+    .premium-card:hover, div[data-testid="stVerticalBlockBorder"]:hover {
+        border-color: rgba(16, 185, 129, 0.3) !important;
+        box-shadow: 0 10px 25px rgba(16, 185, 129, 0.08) !important;
+        transform: translateY(-2px);
+    }
+
+    /* Badge highlights */
+    .concept-tag {
+        display: inline-block;
+        background-color: #f0fdf4 !important;
+        color: #15803d !important;
+        border: 1px solid #bbf7d0 !important;
+        border-radius: 20px;
+        padding: 4px 12px;
+        font-size: 0.82rem;
+        margin-right: 6px;
+        margin-bottom: 6px;
+        font-weight: 500;
+    }
+
+    .difficulty-easy {
+        background-color: #f0fdf4 !important;
+        color: #166534 !important;
+        border: 1px solid #bbf7d0 !important;
+        border-radius: 20px;
+        padding: 3px 10px;
+        font-size: 0.8rem;
+        font-weight: 600;
+    }
+
+    .difficulty-medium {
+        background-color: #fffbeb !important;
+        color: #92400e !important;
+        border: 1px solid #fef3c7 !important;
+        border-radius: 20px;
+        padding: 3px 10px;
+        font-size: 0.8rem;
+        font-weight: 600;
+    }
+
+    .difficulty-hard {
+        background-color: #fef2f2 !important;
+        color: #991b1b !important;
+        border: 1px solid #fee2e2 !important;
+        border-radius: 20px;
+        padding: 3px 10px;
+        font-size: 0.8rem;
+        font-weight: 600;
+    }
+
+    /* Large Score display circle */
+    .score-circle-container {
+        display: flex;
+        flex-direction: column;
+        align-items: center;
+        justify-content: center;
+        margin: 20px 0;
+    }
+
+    .score-circle {
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        width: 130px;
+        height: 130px;
+        border-radius: 50%;
+        background: linear-gradient(135deg, #059669, #10b981);
+        color: white !important;
+        font-size: 3.2rem;
+        font-weight: 800;
+        box-shadow: 0 10px 25px rgba(16, 185, 129, 0.25);
+        position: relative;
+        transition: transform 0.3s ease;
+    }
+
+    .score-circle:hover {
+        transform: scale(1.05) rotate(3deg);
+    }
+
+    .score-label {
+        margin-top: 12px;
+        font-size: 1rem;
+        font-weight: 600;
+        color: #475569;
+        text-transform: uppercase;
+        letter-spacing: 0.08em;
+    }
+
+    /* Success/Strength items list */
+    .strength-item {
+        border-left: 4px solid #10b981;
+        background: #f0fdf4 !important;
+        color: #14532d !important;
+        padding: 10px 16px;
+        margin-bottom: 8px;
+        border-radius: 0 8px 8px 0;
+        font-size: 0.95rem;
+        font-weight: 500;
+    }
+
+    .weakness-item {
+        border-left: 4px solid #f59e0b;
+        background: #fffbeb !important;
+        color: #78350f !important;
+        padding: 10px 16px;
+        margin-bottom: 8px;
+        border-radius: 0 8px 8px 0;
+        font-size: 0.95rem;
+        font-weight: 500;
+    }
+
+    /* Form inputs overrides */
+    .stTextInput>div>div>input, 
+    .stTextArea>div>div>textarea,
+    .stNumberInput>div>div>input,
+    .stSelectbox>div>div>div {
+        background-color: #ffffff !important;
+        border: 1px solid #cbd5e1 !important;
+        color: #1e293b !important;
+        border-radius: 8px !important;
+    }
+
+    .stTextInput>div>div>input:focus, 
+    .stTextArea>div>div>textarea:focus,
+    .stNumberInput>div>div>input:focus {
+        border-color: #10b981 !important;
+        box-shadow: 0 0 0 2px rgba(16, 185, 129, 0.2) !important;
+    }
+
+    /* Button UI styling updates */
+    div.stButton > button {
+        background: linear-gradient(90deg, #059669, #10b981) !important;
+        color: white !important;
+        border: none !important;
+        padding: 10px 20px !important;
+        border-radius: 8px !important;
+        font-weight: 600 !important;
+        transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1) !important;
+        box-shadow: 0 4px 12px rgba(16, 185, 129, 0.15) !important;
+    }
+
+    div.stButton > button:hover {
+        background: linear-gradient(90deg, #047857, #059669) !important;
+        box-shadow: 0 6px 20px rgba(16, 185, 129, 0.25) !important;
+        transform: translateY(-1.5px) !important;
+    }
+
+    /* Tabs override */
+    .stTabs [data-baseweb="tab-list"] {
+        gap: 8px !important;
+        background-color: transparent !important;
+    }
+
+    .stTabs [data-baseweb="tab"] {
+        background-color: #ffffff !important;
+        border: 1px solid #e2ece9 !important;
+        border-radius: 8px 8px 0px 0px !important;
+        padding: 8px 20px !important;
+        color: #64748b !important;
+        font-weight: 600 !important;
+        transition: all 0.2s ease !important;
+    }
+
+    .stTabs [data-baseweb="tab"]:hover {
+        color: #10b981 !important;
+        border-color: #bbf7d0 !important;
+    }
+
+    .stTabs [aria-selected="true"] {
+        background-color: #e6f7ed !important;
+        color: #047857 !important;
+        border-color: #10b981 #10b981 transparent #10b981 !important;
+        border-bottom: 3px solid #10b981 !important;
+    }
+
+    /* File uploader styling */
+    [data-testid="stFileUploader"] {
+        background-color: #ffffff !important;
+        border: 1px dashed #cbd5e1 !important;
+        border-radius: 12px !important;
+        padding: 15px !important;
+    }
+
+    /* Progress bar override */
+    div[data-testid="stProgress"] > div > div > div {
+        background-color: #10b981 !important;
+    }
+
+    /* Ensure all main markdown text has clear visibility and high contrast */
+    .stMarkdown p, .stMarkdown li, .stMarkdown span, .stMarkdown div {
+        color: #2c3e50 !important;
+    }
+
+    /* Enforce dark forest green on widget labels */
+    label[data-testid="stWidgetLabel"], .stWidgetLabel p {
+        color: #0f291e !important;
+        font-weight: 600 !important;
+    }
+
+    /* Enforce high-contrast text on expanders */
+    .streamlit-expanderHeader p {
+        color: #0f291e !important;
+        font-weight: 600 !important;
+    }
+
+    /* Enforce visibility on alert descriptions */
+    div[data-testid="stAlert"] {
+        background-color: #ffffff !important;
+        border-radius: 8px !important;
+        border: 1px solid #cbd5e1 !important;
+    }
+    div[data-testid="stAlert"] p, div[data-testid="stAlert"] span {
+        color: #1e293b !important;
+    }
+
+    /* Force dropdown options text colors */
+    div[data-baseweb="select"] div {
+        color: #1e293b !important;
+    }
+
+    /* Fix tabs text inside p tags inheriting parent colors */
+    .stTabs [data-baseweb="tab"] p {
+        color: inherit !important;
+    }
+    </style>
+    """
 
 st.markdown(CUSTOM_CSS, unsafe_allow_html=True)
 
@@ -499,38 +808,36 @@ with tab_coach:
         
         col1, col2 = st.columns(2, gap="large")
         with col1:
-            st.markdown("<div class='premium-card'>", unsafe_allow_html=True)
-            st.markdown("##### 💼 Job Specifics")
-            job_title = st.text_input(
-                "Target Job Title",
-                placeholder="e.g. Senior Backend Developer, Data Scientist",
-                value=st.session_state.job_title
-            )
-            job_desc = st.text_area(
-                "Job Description",
-                placeholder="Paste key role requirements to customize generated questions...",
-                height=180,
-                value=st.session_state.job_desc
-            )
-            st.markdown("</div>", unsafe_allow_html=True)
+            with st.container(border=True):
+                st.markdown("##### 💼 Job Specifics")
+                job_title = st.text_input(
+                    "Target Job Title",
+                    placeholder="e.g. Senior Backend Developer, Data Scientist",
+                    value=st.session_state.job_title
+                )
+                job_desc = st.text_area(
+                    "Job Description",
+                    placeholder="Paste key role requirements to customize generated questions...",
+                    height=180,
+                    value=st.session_state.job_desc
+                )
             
         with col2:
-            st.markdown("<div class='premium-card'>", unsafe_allow_html=True)
-            st.markdown("##### 📄 Resume Upload")
-            uploaded_resume = st.file_uploader(
-                "Upload Resume (PDF or TXT formats)",
-                type=["pdf", "txt"],
-                key="coach_resume_upload"
-            )
-            
-            st.markdown("##### ⏱️ Interview Length")
-            max_q = st.number_input(
-                "Number of Interview Questions",
-                min_value=3,
-                max_value=25,
-                value=st.session_state.max_questions
-            )
-            st.markdown("</div>", unsafe_allow_html=True)
+            with st.container(border=True):
+                st.markdown("##### 📄 Resume Upload")
+                uploaded_resume = st.file_uploader(
+                    "Upload Resume (PDF or TXT formats)",
+                    type=["pdf", "txt"],
+                    key="coach_resume_upload"
+                )
+                
+                st.markdown("##### ⏱️ Interview Length")
+                max_q = st.number_input(
+                    "Number of Interview Questions",
+                    min_value=3,
+                    max_value=25,
+                    value=st.session_state.max_questions
+                )
             
         if st.button("🚀 Begin Interview Simulation", use_container_width=True):
             if not job_title:
@@ -917,39 +1224,43 @@ with tab_history:
             
             p_col1, p_col2, p_col3 = st.columns(3, gap="medium")
             with p_col1:
-                st.markdown("<div class='premium-card' style='text-align: center; height: 100%;'>", unsafe_allow_html=True)
-                st.markdown("##### Adaptive Difficulty")
-                diff_lvl = profile_data.get("difficulty_level", "Beginner")
-                if diff_lvl == "Advanced":
-                    diff_style = "color: #f87171; font-weight: bold; font-size: 1.8rem;"
-                elif diff_lvl == "Intermediate":
-                    diff_style = "color: #fbbf24; font-weight: bold; font-size: 1.8rem;"
-                else:
-                    diff_style = "color: #34d399; font-weight: bold; font-size: 1.8rem;"
-                st.markdown(f"<div style='margin-top: 15px; {diff_style}'>{diff_lvl}</div>", unsafe_allow_html=True)
-                st.markdown("</div>", unsafe_allow_html=True)
+                with st.container(border=True):
+                    diff_lvl = profile_data.get("difficulty_level", "Beginner")
+                    if diff_lvl == "Advanced":
+                        diff_style = "color: #f87171; font-weight: bold; font-size: 1.8rem;"
+                    elif diff_lvl == "Intermediate":
+                        diff_style = "color: #fbbf24; font-weight: bold; font-size: 1.8rem;"
+                    else:
+                        diff_style = "color: #34d399; font-weight: bold; font-size: 1.8rem;"
+                    st.markdown(
+                        f"""
+                        <div style='text-align: center;'>
+                            <h5 style='margin:0;'>Adaptive Difficulty</h5>
+                            <div style='margin-top: 15px; {diff_style}'>{diff_lvl}</div>
+                        </div>
+                        """,
+                        unsafe_allow_html=True
+                    )
                 
             with p_col2:
-                st.markdown("<div class='premium-card' style='height: 100%;'>", unsafe_allow_html=True)
-                st.markdown("##### 💪 Strongest Topics")
-                strongs = profile_data.get("strong_topics", [])
-                if strongs:
-                    for s in strongs:
-                        st.markdown(f"<span class='concept-tag' style='background-color: rgba(16, 185, 129, 0.12); color: #34d399; border-color: rgba(16, 185, 129, 0.25);'>{s}</span>", unsafe_allow_html=True)
-                else:
-                    st.write("*No strong areas established yet.*")
-                st.markdown("</div>", unsafe_allow_html=True)
+                with st.container(border=True):
+                    st.markdown("##### 💪 Strongest Topics")
+                    strongs = profile_data.get("strong_topics", [])
+                    if strongs:
+                        tags_html = "".join([f"<span class='concept-tag' style='background-color: rgba(16, 185, 129, 0.12); color: #34d399; border-color: rgba(16, 185, 129, 0.25);'>{s}</span>" for s in strongs])
+                        st.markdown(tags_html, unsafe_allow_html=True)
+                    else:
+                        st.write("*No strong areas established yet.*")
                 
             with p_col3:
-                st.markdown("<div class='premium-card' style='height: 100%;'>", unsafe_allow_html=True)
-                st.markdown("##### ⚠️ Weakest Topics")
-                weaks = profile_data.get("weak_topics", [])
-                if weaks:
-                    for w in weaks:
-                        st.markdown(f"<span class='concept-tag' style='background-color: rgba(239, 68, 68, 0.12); color: #f87171; border-color: rgba(239, 68, 68, 0.25);'>{w}</span>", unsafe_allow_html=True)
-                else:
-                    st.write("*No weak areas detected yet! Keep practicing.*")
-                st.markdown("</div>", unsafe_allow_html=True)
+                with st.container(border=True):
+                    st.markdown("##### ⚠️ Weakest Topics")
+                    weaks = profile_data.get("weak_topics", [])
+                    if weaks:
+                        tags_html = "".join([f"<span class='concept-tag' style='background-color: rgba(239, 68, 68, 0.12); color: #f87171; border-color: rgba(239, 68, 68, 0.25);'>{w}</span>" for w in weaks])
+                        st.markdown(tags_html, unsafe_allow_html=True)
+                    else:
+                        st.write("*No weak areas detected yet! Keep practicing.*")
                 
             topic_scores = profile_data.get("topic_scores", [])
             if topic_scores:
@@ -965,12 +1276,11 @@ with tab_history:
             else:
                 st.info("Complete an interview session to see your topic-wise score breakdown.")
 
-            st.markdown("<div class='premium-card'>", unsafe_allow_html=True)
-            st.markdown("##### 🚀 Personalized Practice & Revision Plan")
-            suggestions = profile_data.get("practice_suggestions", [])
-            for sug in suggestions:
-                st.markdown(f"- {sug}")
-            st.markdown("</div>", unsafe_allow_html=True)
+            with st.container(border=True):
+                st.markdown("##### 🚀 Personalized Practice & Revision Plan")
+                suggestions = profile_data.get("practice_suggestions", [])
+                for sug in suggestions:
+                    st.markdown(f"- {sug}")
             
             st.markdown("---")
             
