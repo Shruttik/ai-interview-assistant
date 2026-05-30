@@ -266,6 +266,43 @@ div.stButton > button:hover {
 div[data-testid="stProgress"] > div > div > div {
     background-color: #10b981 !important;
 }
+
+/* Ensure all main markdown text has clear visibility and high contrast */
+.stMarkdown p, .stMarkdown li, .stMarkdown span, .stMarkdown div {
+    color: #2c3e50 !important;
+}
+
+/* Enforce dark forest green on widget labels */
+label[data-testid="stWidgetLabel"], .stWidgetLabel p {
+    color: #0f291e !important;
+    font-weight: 600 !important;
+}
+
+/* Enforce high-contrast text on expanders */
+.streamlit-expanderHeader p {
+    color: #0f291e !important;
+    font-weight: 600 !important;
+}
+
+/* Enforce visibility on alert descriptions */
+div[data-testid="stAlert"] {
+    background-color: #ffffff !important;
+    border-radius: 8px !important;
+    border: 1px solid #cbd5e1 !important;
+}
+div[data-testid="stAlert"] p, div[data-testid="stAlert"] span {
+    color: #1e293b !important;
+}
+
+/* Force dropdown options text colors */
+div[data-baseweb="select"] div {
+    color: #1e293b !important;
+}
+
+/* Fix tabs text inside p tags inheriting parent colors */
+.stTabs [data-baseweb="tab"] p {
+    color: inherit !important;
+}
 </style>
 """
 
