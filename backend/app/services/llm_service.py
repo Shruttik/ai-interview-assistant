@@ -61,6 +61,96 @@ class LLMService:
     question generation, and structured scoring.
     """
 
+    def _is_quota_or_rate_limit(self, e: Exception) -> bool:
+        """
+        Detects if an exception is a Gemini rate limit or quota exceeded error.
+        """
+        err_str = str(e).lower()
+        if isinstance(e, APIError):
+            code = getattr(e, "code", None)
+            if code == 429:
+                return True
+        indicators = ["429", "resourceexhausted", "quota exceeded", "rate limit", "busy", "limit exceeded"]
+        return any(indicator in err_str for indicator in indicators)
+
+    def _evaluate_answer_rules(
+        self,
+        question: str,
+        expected_concepts: List[str],
+        candidate_answer: str
+    ) -> AnswerEvaluation:
+        """
+        Provides a basic rule-based concept matching evaluation when Gemini is unavailable.
+        Scores the answer from 3 to 9 based on the percentage of expected concepts matched.
+        """
+        ans_lower = candidate_answer.lower()
+        matched = []
+        missing = []
+        for concept in expected_concepts:
+            if concept.lower() in ans_lower:
+                matched.append(concept)
+            else:
+                missing.append(concept)
+        
+        num_concepts = len(expected_concepts)
+        if num_concepts > 0:
+            ratio = len(matched) / num_concepts
+        else:
+            ratio = 1.0
+            
+        score = int(3 + ratio * 6)
+        if len(candidate_answer.strip()) < 10:
+            score = 3
+            
+        feedback = "AI service is temporarily busy. Please try again later. (Performed a rule-based evaluation of your response.)"
+        strengths = [f"Covered key concept: '{c}'" for c in matched] if matched else ["Submitted response for evaluation."]
+        weaknesses = [f"Did not mention expected concept: '{c}'" for c in missing] if missing else ["Covered all expected concepts."]
+        model_answer = "Model answer is temporarily unavailable as the AI service is busy."
+        
+        return AnswerEvaluation(
+            score=score,
+            feedback=feedback,
+            strengths=strengths,
+            weaknesses=weaknesses,
+            model_answer=model_answer
+        )
+
+    def _generate_fallback_report(
+        self,
+        job_title: str,
+        transcript_evaluations: List[Dict[str, Any]]
+    ) -> FinalReport:
+        """
+        Generates a fallback FinalReport using basic metrics when Gemini is busy.
+        """
+        scores = []
+        topics = []
+        concepts = []
+        for item in transcript_evaluations:
+            score_val = item.get("score")
+            if score_val is not None:
+                scores.append(score_val)
+            focus = item.get("focus_area")
+            if focus:
+                topics.append(focus)
+            expected = item.get("expected_concepts") or []
+            concepts.extend(expected)
+            
+        avg_score = round(sum(scores) / len(scores)) if scores else 5
+        topics = list(set(topics)) if topics else ["General"]
+        concepts = list(set(concepts)) if concepts else ["Core Concepts"]
+        
+        return FinalReport(
+            overall_score=max(1, min(10, int(avg_score))),
+            summary="AI service is temporarily busy. Please try again later. (Your final report has been compiled based on auto-aggregation of mock session scores.)",
+            key_strengths=["Completed the mock interview session successfully."],
+            improvement_areas=["Review and practice topics covered during the session."],
+            recommendations=["Continue practicing under timed constraints to increase confidence."],
+            topics_to_revise=topics[:3],
+            concepts_to_strengthen=concepts[:5],
+            suggested_focus="Focus on the weak areas identified during the session and practice offline."
+        )
+
     def _get_client(self, api_key: Optional[str] = None) -> genai.Client:
         """
         Helper method to retrieve a Gemini Client.
@@ -106,12 +196,16 @@ class LLMService:
             data = json.loads(response.text)
             return ResumeAnalysis(**data)
             
-        except APIError as api_err:
-            logger.error(f"Gemini API Error during resume analysis: {api_err}")
-            raise ValueError(f"Gemini API request failed: {api_err.message}")
         except Exception as e:
-            logger.error(f"Unexpected error during resume analysis: {e}")
-            raise
+            if self._is_quota_or_rate_limit(e):
+                logger.error(f"Gemini API quota/rate-limit error during resume analysis: {e}")
+                raise ValueError("AI service is temporarily busy. Please try again later.")
+            elif isinstance(e, APIError):
+                logger.error(f"Gemini API Error during resume analysis: {e}")
+                raise ValueError(f"Gemini API request failed: {e.message}")
+            else:
+                logger.error(f"Unexpected error during resume analysis: {e}")
+                raise
 
     def analyze_resume_ats(
         self, 
@@ -150,12 +244,16 @@ class LLMService:
             data = json.loads(response.text)
             return ATSAnalysisResponse(**data)
             
-        except APIError as api_err:
-            logger.error(f"Gemini API Error during ATS analysis: {api_err}")
-            raise ValueError(f"Gemini API request failed: {api_err.message}")
         except Exception as e:
-            logger.error(f"Unexpected error during ATS analysis: {e}")
-            raise
+            if self._is_quota_or_rate_limit(e):
+                logger.error(f"Gemini API quota/rate-limit error during ATS analysis: {e}")
+                raise ValueError("AI service is temporarily busy. Please try again later.")
+            elif isinstance(e, APIError):
+                logger.error(f"Gemini API Error during ATS analysis: {e}")
+                raise ValueError(f"Gemini API request failed: {e.message}")
+            else:
+                logger.error(f"Unexpected error during ATS analysis: {e}")
+                raise
 
     def generate_question(
         self,
@@ -303,10 +401,14 @@ class LLMService:
                 data = json.loads(response.text)
                 return InterviewQuestion(**data)
             except Exception as e:
-                logger.warning(
-                    f"Gemini API question generation attempt {attempt} failed with error: {e}. "
-                    f"Diagnostics: Error type={type(e).__name__}, args={e.args}"
-                )
+                is_quota = self._is_quota_or_rate_limit(e)
+                if is_quota:
+                    logger.error(f"Gemini API quota/rate-limit error during question generation: {e}")
+                else:
+                    logger.warning(
+                        f"Gemini API question generation attempt {attempt} failed with error: {e}. "
+                        f"Diagnostics: Error type={type(e).__name__}, args={e.args}"
+                    )
                 
                 # Check for network/DNS failures
                 err_str = str(e)
@@ -321,12 +423,16 @@ class LLMService:
                     logger.info(f"Retrying question generation in {sleep_time} seconds...")
                     time.sleep(sleep_time)
                 else:
-                    logger.error("All 3 attempts to generate question via Gemini failed. Returning fallback question.")
+                    logger.error(f"All 3 attempts to generate question via Gemini failed. Returning fallback question. Last error: {e}")
                     # Select fallback question based on length of history to avoid duplicates
                     asked_count = len([h for h in history if h.get("role") == "interviewer"])
-                    fallback_q = fallback_questions[asked_count % len(fallback_questions)]
-                    # Customize slightly for the target job title
-                    fallback_q.question = f"For the role of {job_title}: {fallback_q.question}"
+                    fallback_base = fallback_questions[asked_count % len(fallback_questions)]
+                    fallback_q = InterviewQuestion(
+                        question=f"For the role of {job_title}: {fallback_base.question}",
+                        focus_area=fallback_base.focus_area,
+                        expected_concepts=fallback_base.expected_concepts,
+                        difficulty=fallback_base.difficulty
+                    )
                     return fallback_q
 
     def evaluate_answer(
@@ -370,10 +476,14 @@ class LLMService:
                 data = json.loads(response.text)
                 return AnswerEvaluation(**data)
             except Exception as e:
-                logger.warning(
-                    f"Gemini API answer evaluation attempt {attempt} failed with error: {e}. "
-                    f"Diagnostics: Error type={type(e).__name__}, args={e.args}"
-                )
+                is_quota = self._is_quota_or_rate_limit(e)
+                if is_quota:
+                    logger.error(f"Gemini API quota/rate-limit error during answer evaluation: {e}")
+                else:
+                    logger.warning(
+                        f"Gemini API answer evaluation attempt {attempt} failed with error: {e}. "
+                        f"Diagnostics: Error type={type(e).__name__}, args={e.args}"
+                    )
                 
                 # Check for network/DNS failures
                 err_str = str(e)
@@ -388,14 +498,8 @@ class LLMService:
                     logger.info(f"Retrying answer evaluation in {sleep_time} seconds...")
                     time.sleep(sleep_time)
                 else:
-                    logger.error("All 3 attempts to evaluate answer via Gemini failed. Returning fallback evaluation.")
-                    return AnswerEvaluation(
-                        score=5,
-                        feedback="Fallback Evaluation: We recorded your answer, but we were unable to reach the AI service for detailed grading. A default rating has been applied to ensure your interview session is not interrupted.",
-                        strengths=["Answer submitted successfully."],
-                        weaknesses=["Detailed AI analysis is currently unavailable due to network connectivity issues."],
-                        model_answer="Detailed model answer is currently unavailable."
-                    )
+                    logger.error(f"All 3 attempts to evaluate answer via Gemini failed. Calling rule-based fallback evaluation. Last error: {e}")
+                    return self._evaluate_answer_rules(question, expected_concepts, candidate_answer)
 
     def generate_final_report(
         self,
@@ -462,10 +566,14 @@ class LLMService:
                 data = json.loads(response.text)
                 return FinalReport(**data)
             except Exception as e:
-                logger.warning(
-                    f"Gemini API final report generation attempt {attempt} failed with error: {e}. "
-                    f"Diagnostics: Error type={type(e).__name__}, args={e.args}"
-                )
+                is_quota = self._is_quota_or_rate_limit(e)
+                if is_quota:
+                    logger.error(f"Gemini API quota/rate-limit error during final report generation: {e}")
+                else:
+                    logger.warning(
+                        f"Gemini API final report generation attempt {attempt} failed with error: {e}. "
+                        f"Diagnostics: Error type={type(e).__name__}, args={e.args}"
+                    )
                 
                 # Check for network/DNS failures
                 err_str = str(e)
@@ -480,8 +588,8 @@ class LLMService:
                     logger.info(f"Retrying final report generation in {sleep_time} seconds...")
                     time.sleep(sleep_time)
                 else:
-                    logger.error("All 3 attempts to generate final report via Gemini failed.")
-                    raise e
+                    logger.error(f"All 3 attempts to generate final report via Gemini failed. Returning fallback report. Last error: {e}")
+                    return self._generate_fallback_report(job_title, transcript_evaluations)
 
 # Single instance of LLMService to be imported
 llm_service = LLMService()

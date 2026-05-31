@@ -203,6 +203,9 @@ async def ats_analyze_resume(
         
         return ats_report
         
+    except ValueError as ve:
+        logger.error(f"Validation error during ATS: {ve}")
+        raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail=str(ve))
     except Exception as e:
         logger.error(f"ATS service failed: {e}")
         raise HTTPException(
