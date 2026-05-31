@@ -13,23 +13,99 @@ Built with a decoupled FastAPI backend architecture and a responsive Streamlit f
 
 ---
 
-## Technical Overview
+## Table of Contents
 
-The system operates as an interactive mock interviewer that updates its behavior dynamically using rolling performance tracking. Instead of presenting static pre-defined questions, it tracks candidate proficiency across distinct technical domains and adapts the difficulty level, focus area selection, and topic drilldown dynamically, storing running metric statistics in a relational database.
+- [Project Highlights](#project-highlights)
+- [Key Features](#key-features)
+- [Screenshots and Features Walkthrough](#screenshots-and-features-walkthrough)
+- [System Architecture](#system-architecture)
+- [Database Design](#database-design)
+- [Detailed System Workflows](#detailed-system-workflows)
+- [Tech Stack Details](#tech-stack-details)
+- [Installation and Setup Instructions](#installation-and-setup-instructions)
+- [Cloud Deployment Guide](#cloud-deployment-guide)
+- [Future Enhancements](#future-enhancements)
 
-### Key Features
+---
 
-1. **Stateful JWT Security Layer**: Robust user authentication with token-based endpoint access control. Passwords undergo pre-hashing using SHA-256 before bcrypt processing to bypass standard length restrictions while ensuring maximum entropy storage.
-2. **Dynamic Resume & Job Description Parser**: Automated multipart form parsing that extracts technical competencies, maps them to reference guidelines, and outputs structured JSON metadata.
-3. **Applicant Tracking System (ATS) Analyzer**: Evaluates resumes against a target job description, generating compatibility score ratings, detecting missing critical skills, identifying keyword gaps, and listing formatting recommendations to bypass layout parsers.
-4. **Adaptive Interview Engine**:
-   - **Scalable Simulation Lengths**: Configurable turn counts supporting interviews from 3 up to 25 questions.
-   - **Proficiency-Tuned Difficulty**: Automatically adjusts subsequent questions (Easy, Medium, Hard) depending on the candidate's running score average.
-   - **Weak Area Reinforcement**: Prioritizes topics showing low performance (score below 6.0/10.0) with a 60% probability.
-   - **Strict Anti-Redundancy Filters**: Feeds historical question records back to the model context to prevent topic duplication.
-5. **Real-time Evaluation Engine**: Grades responses from 1 to 10 based on expected concepts, extracting individual strengths, weaknesses, and rendering reference model answers.
-6. **Unified Analytics Dashboard**: Displays cumulative statistics, radar breakdown charts for core domains (OOP, DSA, SQL, DBMS, Networks, OS, Python, Java), and structured revision plans listing focus concepts and next steps.
-7. **Synchronized History Portal**: Saves full interview transcripts, evaluations, and dashboards allowing candidates or recruiters to review historical sessions.
+## Project Highlights
+
+- **AI-Powered Evaluation Pipeline**: Real-time turn-based response grading and adaptive question dispatching using Google Gemini 2.5 Flash.
+- **Adaptive Interview Difficulty**: Dynamic difficulty leveling (Easy, Medium, Hard) and weak-area priority routing based on rolling user performance scores.
+- **ATS Resume Matching and Skill-Gap Analysis**: Performs deep semantic comparison between resume experiences and target job qualifications.
+- **Secure Authentication and Session Management**: Pre-hashed SHA-256 password storage before bcrypt processing to bypass standard length limits while ensuring maximum entropy.
+- **Full-Stack Decoupled Architecture**: Optimized REST API communication between a FastAPI gateway and a responsive Streamlit client.
+- **Performance Analytics Dashboard**: SQLite schema aggregates user performance across core technical domains to render rolling averages and improvement suggestions.
+
+---
+
+## Key Features
+
+- **JWT Authentication**: Secure stateful user credentials with bcrypt encryption and token-based endpoint access control.
+- **ATS Resume Analyzer**: Upload resumes and perform scans to generate compatibility scores, detect missing skills, and provide keyword recommendations.
+- **Job Description Matching**: Deep semantic comparison between resume experiences and target job qualifications.
+- **Adaptive Interview Engine**: Adapts subsequent questions (Easy, Medium, Hard) and prioritizes weak areas based on candidate performance.
+- **AI Answer Evaluation**: Real-time turn-based grading (1-10) with detailed feedback, strengths, weaknesses, and exemplar model answers.
+- **Topic-wise Performance Tracking**: Tracks cumulative user performance across core technical domains (OOP, DSA, SQL, DBMS, Networks, OS).
+- **Improvement Analytics**: Interactive dashboard showing score trends over time and weak/strong skill badges.
+- **Personalized Recommendations**: Automatically compiles concrete topic revision guides and practice advice when finalizing sessions.
+- **Interview History Management**: Persistent repository of all past mock interview transcripts and performance scorecard results.
+- **Fault-Tolerant Report Generation**: Advanced backend error handling that compiles standard fallbacks if connection timeouts or API issues occur.
+
+---
+
+## Screenshots and Features Walkthrough
+
+### User Authentication
+![Login](docs/screenshots/login.png)
+
+Secure JWT-based user authentication and account management.
+
+---
+
+### Interview Dashboard
+![Dashboard](docs/screenshots/dashboard.png)
+
+Centralized dashboard for interview practice, ATS analysis, and performance tracking.
+
+---
+
+### ATS Resume Analysis
+![ATS Analyzer](docs/screenshots/ats_analyzer.png)
+![ATS Result](docs/screenshots/ats_result.png)
+
+Upload resume and compare against a target job description.
+Generate ATS score, skill match analysis, missing skills, and improvement suggestions.
+
+---
+
+### AI Interview Generation
+![Interview Generation](docs/screenshots/questions.png)
+
+Generate personalized interview questions based on resume, job role, and adaptive difficulty.
+
+---
+
+### Answer Evaluation
+![Answer Evaluation](docs/screenshots/questions_score.png)
+
+AI-powered answer scoring with detailed performance feedback.
+
+---
+
+### Performance Analytics
+![Result Trends](docs/screenshots/result_trends.png)
+![Result Improvement](docs/screenshots/result_improvement.png)
+
+Track progress across interviews, identify weak areas, and visualize improvement trends.
+
+---
+
+### Personalized Recommendations
+![Recommendations](docs/screenshots/recommendations.png)
+![Recommendation Resume](docs/screenshots/recommendation_resume.png)
+
+Generate tailored learning recommendations, topic revision plans, and resume enhancement suggestions.
 
 ---
 
@@ -376,28 +452,6 @@ Open `http://localhost:8501` in your browser to view the application.
 4. In the **Advanced Settings** dialog, configure your environment variables:
    - `BACKEND_URL`: The URL of your deployed FastAPI backend service.
    - `GEMINI_API_KEY`: (Optional fallback key).
-
----
-
-## Screenshots Placeholders
-
-Below are placeholders to represent the core views of the application:
-
-#### 1. Registration and Authentication View
-Allows candidates to register and log in securely.
-`[Insert Authentication Screen Placeholder]`
-
-#### 2. ATS Audit Console
-Shows matching skills, missing keywords, and the ATS scorecard.
-`[Insert ATS Audit Console Placeholder]`
-
-#### 3. Active Q&A Mock Session
-Renders current questions, expected concepts, and difficulty badges.
-`[Insert Active Q&A Screen Placeholder]`
-
-#### 4. Analytics Profile Dashboard
-Displays topic averages, difficulty trends, and personalized study suggestions.
-`[Insert Analytics Profile Placeholder]`
 
 ---
 
