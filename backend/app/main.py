@@ -69,6 +69,13 @@ app.include_router(interview.router, prefix="/api")
 app.include_router(history.router, prefix="/api")
 app.include_router(performance.router, prefix="/api")
 
+@app.get("/health", tags=["health"])
+async def health_check():
+    """
+    Dedicated health check endpoint for deployment monitoring.
+    """
+    return {"status": "healthy"}
+
 @app.get("/", tags=["health"])
 async def root():
     """

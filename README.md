@@ -508,17 +508,30 @@ Open `http://localhost:8501` in your browser to view the application.
 
 ## Cloud Deployment Guide
 
-### Deploying the Backend API (Render / Railway / Heroku)
+### Deploying the Backend API (Render - Blueprint IaC Method)
+1. Ensure `render.yaml` is present at the root of your repository.
+2. Push your code to your GitHub repository.
+3. Log in to Render and navigate to **Blueprints**.
+4. Click **New Blueprint Instance** and select your repository.
+5. Render will automatically configure the Web Service, mount a persistent 1GB disk at `/data`, and bind the environment variables.
+6. Provide your custom `GEMINI_API_KEY` when prompted in the Render Dashboard.
+7. Click **Deploy**. The backend will build and start automatically, exposing the API.
+
+### Deploying the Backend API (Render - Manual Method)
 1. Push your code to your GitHub repository.
 2. Link the repository to your hosting service (e.g. Render Web Service).
 3. Set the runtime environment to **Python**.
 4. Set the **Build Command**: `pip install -r requirements.txt`
 5. Set the **Start Command**: `uvicorn backend.app.main:app --host 0.0.0.0 --port $PORT`
-6. Add the following environment variables to the web service console:
-   - `GEMINI_API_KEY`
-   - `SECRET_KEY`
-   - `ALGORITHM`
-   - `DATABASE_URL` (You can keep the SQLite URL or link a PostgreSQL database address).
+6. Add a persistent disk to your service in the Render console:
+   - **Mount Path**: `/data`
+   - **Name**: `sqlite-data`
+7. Configure the following environment variables in the console:
+   - `GEMINI_API_KEY`: Your Google Gemini API Key.
+   - `SECRET_KEY`: A secure hex string for token signatures.
+   - `ALGORITHM`: `HS256`
+   - `DATABASE_URL`: `sqlite:////data/interview_coach.db` (Ensure four slashes for absolute container disk path).
+   - `ACCESS_TOKEN_EXPIRE_MINUTES`: `60`
 
 ### Deploying the Frontend Client (Streamlit Community Cloud)
 1. Sign up or log in at [Streamlit Share](https://share.streamlit.io/).
