@@ -333,8 +333,6 @@ if "token" not in st.session_state:
     st.session_state.token = None
 if "user_email" not in st.session_state:
     st.session_state.user_email = ""
-if "api_key" not in st.session_state:
-    st.session_state.api_key = os.getenv("GEMINI_API_KEY", "")
 
 # Mock Interview State
 if "interview_session_id" not in st.session_state:
@@ -367,8 +365,6 @@ def get_auth_headers():
     headers = {}
     if st.session_state.token:
         headers["Authorization"] = f"Bearer {st.session_state.token}"
-    if st.session_state.api_key:
-        headers["X-Gemini-API-Key"] = st.session_state.api_key
     return headers
 
 def perform_logout():
@@ -390,17 +386,6 @@ def reset_interview_variables():
 # ---------------------------------------------------------------------------
 with st.sidebar:
     st.markdown("### ⚙️ System Settings")
-    
-    # Custom Gemini Key override
-    api_key_input = st.text_input(
-        "Google Gemini API Key",
-        value=st.session_state.api_key,
-        type="password",
-        help="Provide your Gemini API key. Defaults to system .env value if left blank."
-    )
-    if api_key_input:
-        st.session_state.api_key = api_key_input
-        
     st.markdown("---")
     
     if st.session_state.token:
@@ -547,8 +532,6 @@ with tab_coach:
                 st.error("Please supply a Target Job Title.")
             elif not uploaded_resume:
                 st.error("Please upload your resume file.")
-            elif not st.session_state.api_key:
-                st.error("Gemini API key is not configured. Please supply it in the sidebar.")
             else:
                 with st.spinner("Uploading resume and analyzing skills..."):
                     try:
