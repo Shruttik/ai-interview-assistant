@@ -1,4 +1,7 @@
 import json
+import time
+import socket
+import httpx
 from typing import List, Dict, Any, Optional
 from pydantic import BaseModel, Field
 from google import genai
@@ -254,26 +257,77 @@ class LLMService:
             "Ensure the question is creative, professional, and strictly different from the previous questions."
         )
 
-        try:
-            logger.info(f"Generating adaptive question (Difficulty: {difficulty}, History length: {len(history)})...")
-            response = client.models.generate_content(
-                model="gemini-2.5-flash",
-                contents=prompt,
-                config=types.GenerateContentConfig(
-                    response_mime_type="application/json",
-                    response_schema=InterviewQuestion,
-                    temperature=0.7,
-                )
+        attempts = 3
+        backoff_sec = 2
+        
+        # Predefined fallback questions to continue session under network failure
+        fallback_questions = [
+            InterviewQuestion(
+                question="Explain the difference between SQL and NoSQL databases, and when you would use each.",
+                focus_area="DBMS",
+                expected_concepts=["SQL", "NoSQL", "ACID", "Schema", "Scaling"],
+                difficulty="Medium"
+            ),
+            InterviewQuestion(
+                question="Explain the key principles of Object-Oriented Programming (OOP) and give examples of each.",
+                focus_area="OOP",
+                expected_concepts=["Encapsulation", "Inheritance", "Polymorphism", "Abstraction"],
+                difficulty="Medium"
+            ),
+            InterviewQuestion(
+                question="What is a RESTful API? What are the main HTTP methods and their usage?",
+                focus_area="REST API Design",
+                expected_concepts=["GET", "POST", "PUT", "DELETE", "Statelessness", "Resources"],
+                difficulty="Medium"
+            ),
+            InterviewQuestion(
+                question="Describe how a Hash Map works internally, including collision handling.",
+                focus_area="DSA",
+                expected_concepts=["Hash function", "Collision", "Chaining", "Open Addressing", "O(1) time complexity"],
+                difficulty="Medium"
             )
-            data = json.loads(response.text)
-            return InterviewQuestion(**data)
-            
-        except APIError as api_err:
-            logger.error(f"Gemini API Error during question generation: {api_err}")
-            raise ValueError(f"Gemini API request failed: {api_err.message}")
-        except Exception as e:
-            logger.error(f"Unexpected error during question generation: {e}")
-            raise
+        ]
+
+        for attempt in range(1, attempts + 1):
+            try:
+                logger.info(f"Generating adaptive question (Difficulty: {difficulty}, History length: {len(history)}, attempt {attempt}/{attempts})...")
+                response = client.models.generate_content(
+                    model="gemini-2.5-flash",
+                    contents=prompt,
+                    config=types.GenerateContentConfig(
+                        response_mime_type="application/json",
+                        response_schema=InterviewQuestion,
+                        temperature=0.7,
+                    )
+                )
+                data = json.loads(response.text)
+                return InterviewQuestion(**data)
+            except Exception as e:
+                logger.warning(
+                    f"Gemini API question generation attempt {attempt} failed with error: {e}. "
+                    f"Diagnostics: Error type={type(e).__name__}, args={e.args}"
+                )
+                
+                # Check for network/DNS failures
+                err_str = str(e)
+                is_network = any(phrase in err_str for phrase in ["getaddrinfo", "unreachable", "Name or service not known", "Connection refused"])
+                is_network = is_network or isinstance(e, (httpx.ConnectError, httpx.ConnectTimeout, httpx.NetworkError, socket.gaierror))
+                
+                if is_network:
+                    logger.error(f"Detected DNS/network connectivity failure during question generation: {e}")
+                
+                if attempt < attempts:
+                    sleep_time = backoff_sec ** attempt
+                    logger.info(f"Retrying question generation in {sleep_time} seconds...")
+                    time.sleep(sleep_time)
+                else:
+                    logger.error("All 3 attempts to generate question via Gemini failed. Returning fallback question.")
+                    # Select fallback question based on length of history to avoid duplicates
+                    asked_count = len([h for h in history if h.get("role") == "interviewer"])
+                    fallback_q = fallback_questions[asked_count % len(fallback_questions)]
+                    # Customize slightly for the target job title
+                    fallback_q.question = f"For the role of {job_title}: {fallback_q.question}"
+                    return fallback_q
 
     def evaluate_answer(
         self,
@@ -298,26 +352,50 @@ class LLMService:
             "respond to the same question."
         )
 
-        try:
-            logger.info("Calling Gemini API for answer evaluation...")
-            response = client.models.generate_content(
-                model="gemini-2.5-flash",
-                contents=prompt,
-                config=types.GenerateContentConfig(
-                    response_mime_type="application/json",
-                    response_schema=AnswerEvaluation,
-                    temperature=0.3,
+        attempts = 3
+        backoff_sec = 2
+
+        for attempt in range(1, attempts + 1):
+            try:
+                logger.info(f"Calling Gemini API for answer evaluation (attempt {attempt}/{attempts})...")
+                response = client.models.generate_content(
+                    model="gemini-2.5-flash",
+                    contents=prompt,
+                    config=types.GenerateContentConfig(
+                        response_mime_type="application/json",
+                        response_schema=AnswerEvaluation,
+                        temperature=0.3,
+                    )
                 )
-            )
-            data = json.loads(response.text)
-            return AnswerEvaluation(**data)
-            
-        except APIError as api_err:
-            logger.error(f"Gemini API Error during answer evaluation: {api_err}")
-            raise ValueError(f"Gemini API request failed: {api_err.message}")
-        except Exception as e:
-            logger.error(f"Unexpected error during answer evaluation: {e}")
-            raise
+                data = json.loads(response.text)
+                return AnswerEvaluation(**data)
+            except Exception as e:
+                logger.warning(
+                    f"Gemini API answer evaluation attempt {attempt} failed with error: {e}. "
+                    f"Diagnostics: Error type={type(e).__name__}, args={e.args}"
+                )
+                
+                # Check for network/DNS failures
+                err_str = str(e)
+                is_network = any(phrase in err_str for phrase in ["getaddrinfo", "unreachable", "Name or service not known", "Connection refused"])
+                is_network = is_network or isinstance(e, (httpx.ConnectError, httpx.ConnectTimeout, httpx.NetworkError, socket.gaierror))
+                
+                if is_network:
+                    logger.error(f"Detected DNS/network connectivity failure during answer evaluation: {e}")
+                
+                if attempt < attempts:
+                    sleep_time = backoff_sec ** attempt
+                    logger.info(f"Retrying answer evaluation in {sleep_time} seconds...")
+                    time.sleep(sleep_time)
+                else:
+                    logger.error("All 3 attempts to evaluate answer via Gemini failed. Returning fallback evaluation.")
+                    return AnswerEvaluation(
+                        score=5,
+                        feedback="Fallback Evaluation: We recorded your answer, but we were unable to reach the AI service for detailed grading. A default rating has been applied to ensure your interview session is not interrupted.",
+                        strengths=["Answer submitted successfully."],
+                        weaknesses=["Detailed AI analysis is currently unavailable due to network connectivity issues."],
+                        model_answer="Detailed model answer is currently unavailable."
+                    )
 
     def generate_final_report(
         self,
@@ -366,26 +444,44 @@ class LLMService:
             "3. suggested_focus: A single sentence recommending the focus of their next interview session based on their weakest topics."
         )
 
-        try:
-            logger.info("Calling Gemini API for final report generation...")
-            response = client.models.generate_content(
-                model="gemini-2.5-flash",
-                contents=prompt,
-                config=types.GenerateContentConfig(
-                    response_mime_type="application/json",
-                    response_schema=FinalReport,
-                    temperature=0.3,
+        attempts = 3
+        backoff_sec = 2
+
+        for attempt in range(1, attempts + 1):
+            try:
+                logger.info(f"Calling Gemini API for final report generation (attempt {attempt}/{attempts})...")
+                response = client.models.generate_content(
+                    model="gemini-2.5-flash",
+                    contents=prompt,
+                    config=types.GenerateContentConfig(
+                        response_mime_type="application/json",
+                        response_schema=FinalReport,
+                        temperature=0.3,
+                    )
                 )
-            )
-            data = json.loads(response.text)
-            return FinalReport(**data)
-            
-        except APIError as api_err:
-            logger.error(f"Gemini API Error during final report generation: {api_err}")
-            raise ValueError(f"Gemini API request failed: {api_err.message}")
-        except Exception as e:
-            logger.error(f"Unexpected error during final report generation: {e}")
-            raise
+                data = json.loads(response.text)
+                return FinalReport(**data)
+            except Exception as e:
+                logger.warning(
+                    f"Gemini API final report generation attempt {attempt} failed with error: {e}. "
+                    f"Diagnostics: Error type={type(e).__name__}, args={e.args}"
+                )
+                
+                # Check for network/DNS failures
+                err_str = str(e)
+                is_network = any(phrase in err_str for phrase in ["getaddrinfo", "unreachable", "Name or service not known", "Connection refused"])
+                is_network = is_network or isinstance(e, (httpx.ConnectError, httpx.ConnectTimeout, httpx.NetworkError, socket.gaierror))
+                
+                if is_network:
+                    logger.error(f"Detected DNS/network connectivity failure during final report generation: {e}")
+                
+                if attempt < attempts:
+                    sleep_time = backoff_sec ** attempt
+                    logger.info(f"Retrying final report generation in {sleep_time} seconds...")
+                    time.sleep(sleep_time)
+                else:
+                    logger.error("All 3 attempts to generate final report via Gemini failed.")
+                    raise e
 
 # Single instance of LLMService to be imported
 llm_service = LLMService()

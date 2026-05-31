@@ -374,12 +374,15 @@ def finalize_session(
     Grades the entire interview session, compiles summary analytics, 
     and saves the FinalReport in the database.
     """
+    # Stage 1: Session retrieval
+    logger.info(f"[Finalize Session] Stage 1 - Session retrieval. session_id: {session_id}, user: {current_user.email}")
     session = db.query(InterviewSession).filter(
         InterviewSession.id == session_id,
         InterviewSession.user_id == current_user.id
     ).first()
     
     if not session:
+        logger.error(f"[Finalize Session] Session {session_id} not found for user {current_user.email}.")
         raise HTTPException(
             status_code=status.HTTP_404_NOT_FOUND,
             detail="Session not found."
@@ -387,6 +390,20 @@ def finalize_session(
         
     # Check if report already exists
     if session.report:
+        logger.info(f"[Finalize Session] Existing report found for session {session_id}. Sanitizing nulls and returning.")
+        # Ensure older null records are handled safely to satisfy FinalReportResponse schema
+        if session.report.key_strengths is None:
+            session.report.key_strengths = []
+        if session.report.improvement_areas is None:
+            session.report.improvement_areas = []
+        if session.report.recommendations is None:
+            session.report.recommendations = []
+        if session.report.topics_to_revise is None:
+            session.report.topics_to_revise = []
+        if session.report.concepts_to_strengthen is None:
+            session.report.concepts_to_strengthen = []
+        if session.report.suggested_focus is None:
+            session.report.suggested_focus = "Focus on weak subject areas in future practice."
         return session.report
         
     # Fetch all answered questions
@@ -396,37 +413,81 @@ def finalize_session(
     ).all()
     
     if not questions:
+        logger.warning(f"[Finalize Session] Cannot finalize session {session_id} because the transcript is empty.")
         raise HTTPException(
             status_code=status.HTTP_400_BAD_REQUEST,
             detail="Cannot compile final scorecard for an empty transcript."
         )
         
+    # Stage 2: Answer aggregation
+    logger.info(f"[Finalize Session] Stage 2 - Answer aggregation. Found {len(questions)} answered questions.")
+    transcript_evaluations = []
+    scores = []
+    
+    for q in questions:
+        # Default any missing scores to 5
+        score_val = q.score
+        if score_val is None:
+            logger.warning(f"[Finalize Session] Question ID {q.id} has missing score. Defaulting to 5.")
+            score_val = 5
+        scores.append(score_val)
+        
+        transcript_evaluations.append({
+            "question": q.question_text,
+            "answer": q.candidate_answer,
+            "score": score_val,
+            "feedback": q.feedback or "No feedback provided.",
+            "strengths": q.strengths or [],
+            "weaknesses": q.weaknesses or []
+        })
+        
+    # Stage 3: AI evaluation / Fallback Report Creation
+    logger.info(f"[Finalize Session] Stage 3 - AI evaluation. Generating report for session {session_id}.")
     try:
-        # Re-format evaluations list
-        transcript_evaluations = []
-        for q in questions:
-            transcript_evaluations.append({
-                "question": q.question_text,
-                "answer": q.candidate_answer,
-                "score": q.score,
-                "feedback": q.feedback,
-                "strengths": q.strengths,
-                "weaknesses": q.weaknesses
-            })
-            
         final_report = llm_service.generate_final_report(
             job_title=session.job_title,
             transcript_evaluations=transcript_evaluations,
             api_key=x_gemini_api_key
         )
+        logger.info(f"[Finalize Session] AI scorecard generated successfully for session {session_id}.")
+    except Exception as e:
+        logger.error(f"[Finalize Session] Gemini final report generation failed: {e}. Generating fallback scorecard.")
+        from backend.app.services.llm_service import FinalReport
         
-        # Update UserTopicScore and PerformanceTracking dynamically
+        # Calculate overall score from aggregation
+        avg_score = round(sum(scores) / len(scores)) if scores else 5
+        
+        # Gather focus areas and expected concepts for fallback lists
+        topics = list(set([q.focus_area for q in questions if q.focus_area]))
+        concepts = []
+        for q in questions:
+            if q.expected_concepts:
+                concepts.extend(q.expected_concepts)
+        concepts = list(set(concepts))
+        
+        # Construct fallback scorecard matching the schema
+        final_report = FinalReport(
+            overall_score=max(1, min(10, int(avg_score))),
+            summary=f"Fallback Report: Performance summary for role {session.job_title} compiled based on auto-aggregation of scores. The AI evaluation service is temporarily offline.",
+            key_strengths=["Successfully attempted the technical questions asked in the session."],
+            improvement_areas=["Review and practice topics covered during the session to improve scores."],
+            recommendations=["Practice mock interviews under timed constraints to increase confidence."],
+            topics_to_revise=topics if topics else ["General"],
+            concepts_to_strengthen=concepts if concepts else ["Core Concepts"],
+            suggested_focus="Practice mock interview sessions in technical focus areas where performance was lower."
+        )
+        logger.info(f"[Finalize Session] Fallback scorecard created successfully for session {session_id}.")
+        
+    try:
+        # Stage 4: Score calculation & Performance profile updates
+        logger.info(f"[Finalize Session] Stage 4 - Score calculation and user metrics update.")
         topic_aggregations = {}
         for q in questions:
-            if not q.focus_area or q.score is None:
-                continue
+            focus_area = q.focus_area or "General"
+            q_score = q.score if q.score is not None else 5
+            
             # Clean topic name and map to standard categories
-            topic = q.focus_area.strip()
+            topic = focus_area.strip()
             t_upper = topic.upper()
             mapped_topic = topic # default
             for standard_topic in ["OOP", "DBMS", "SQL", "Operating Systems", "Computer Networks", "DSA", "Python", "Java"]:
@@ -436,7 +497,7 @@ def finalize_session(
             
             if mapped_topic not in topic_aggregations:
                 topic_aggregations[mapped_topic] = {"total_score": 0, "count": 0}
-            topic_aggregations[mapped_topic]["total_score"] += q.score
+            topic_aggregations[mapped_topic]["total_score"] += q_score
             topic_aggregations[mapped_topic]["count"] += 1
 
         # Save/update UserTopicScore in database
@@ -506,28 +567,30 @@ def finalize_session(
             )
             db.add(profile_record)
 
-        # Save report to DB with AI recommendations
+        # Stage 5: Report creation
+        logger.info(f"[Finalize Session] Stage 5 - Saving report for session {session_id} to database.")
         db_report = InterviewReport(
             session_id=session_id,
             overall_score=final_report.overall_score,
             summary=final_report.summary,
-            key_strengths=final_report.key_strengths,
-            improvement_areas=final_report.improvement_areas,
-            recommendations=final_report.recommendations,
-            topics_to_revise=final_report.topics_to_revise,
-            concepts_to_strengthen=final_report.concepts_to_strengthen,
-            suggested_focus=final_report.suggested_focus
+            key_strengths=final_report.key_strengths or [],
+            improvement_areas=final_report.improvement_areas or [],
+            recommendations=final_report.recommendations or [],
+            topics_to_revise=final_report.topics_to_revise or [],
+            concepts_to_strengthen=final_report.concepts_to_strengthen or [],
+            suggested_focus=final_report.suggested_focus or "Focus on weak subject areas in future practice."
         )
         db.add(db_report)
         db.commit()
         db.refresh(db_report)
         
+        logger.info(f"[Finalize Session] Session {session_id} finalized and report saved successfully.")
         return db_report
         
     except Exception as e:
-        logger.error(f"Error finalizing session: {e}")
+        logger.error(f"[Finalize Session] Error saving scorecard metadata for session {session_id}: {e}")
         db.rollback()
         raise HTTPException(
             status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
-            detail=f"Failed to generate scorecard: {str(e)}"
+            detail=f"Failed to save final scorecard: {str(e)}"
         )

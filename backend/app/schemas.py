@@ -75,12 +75,12 @@ class AnswerResponse(BaseModel):
 class FinalReportResponse(BaseModel):
     overall_score: int
     summary: str
-    key_strengths: List[str]
-    improvement_areas: List[str]
-    recommendations: List[str]
-    topics_to_revise: List[str]
-    concepts_to_strengthen: List[str]
-    suggested_focus: str
+    key_strengths: List[str] = []
+    improvement_areas: List[str] = []
+    recommendations: List[str] = []
+    topics_to_revise: List[str] = []
+    concepts_to_strengthen: List[str] = []
+    suggested_focus: str = "Focus on weak subject areas in future practice."
 
     class Config:
         from_attributes = True

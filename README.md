@@ -13,10 +13,21 @@ Built with a decoupled FastAPI backend architecture and a responsive Streamlit f
 
 ---
 
+## Live Demo
+
+Frontend: <TO_BE_FILLED_AFTER_DEPLOYMENT>
+
+Backend API Docs: <TO_BE_FILLED_AFTER_DEPLOYMENT>
+
+---
+
 ## Table of Contents
 
 - [Project Highlights](#project-highlights)
+- [Impact Highlights](#impact-highlights)
 - [Key Features](#key-features)
+- [Core API Endpoints](#core-api-endpoints)
+- [Project Structure](#project-structure)
 - [Screenshots and Features Walkthrough](#screenshots-and-features-walkthrough)
 - [System Architecture](#system-architecture)
 - [Database Design](#database-design)
@@ -24,6 +35,8 @@ Built with a decoupled FastAPI backend architecture and a responsive Streamlit f
 - [Tech Stack Details](#tech-stack-details)
 - [Installation and Setup Instructions](#installation-and-setup-instructions)
 - [Cloud Deployment Guide](#cloud-deployment-guide)
+- [Author](#author)
+- [Resume Project Summary](#resume-project-summary)
 - [Future Enhancements](#future-enhancements)
 
 ---
@@ -39,6 +52,18 @@ Built with a decoupled FastAPI backend architecture and a responsive Streamlit f
 
 ---
 
+## Impact Highlights
+
+- Built a full-stack AI Interview Assistant and ATS Optimizer using FastAPI, Streamlit, SQLite, SQLAlchemy, JWT Authentication, and the Google Gemini API.
+- Developed 15+ REST API endpoints for authentication, ATS analysis, interview management, performance analytics, and report generation.
+- Implemented adaptive interview generation using topic-wise performance tracking and dynamic difficulty adjustment.
+- Designed relational database architecture with multiple interconnected models and session persistence.
+- Integrated AI-powered ATS resume analysis, answer evaluation, and personalized recommendation workflows.
+- Added fault-tolerant report generation and robust fallback mechanisms for API/network failures.
+- Implemented secure authentication with password hashing, JWT token validation, and protected endpoints.
+
+---
+
 ## Key Features
 
 - **JWT Authentication**: Secure stateful user credentials with bcrypt encryption and token-based endpoint access control.
@@ -51,6 +76,56 @@ Built with a decoupled FastAPI backend architecture and a responsive Streamlit f
 - **Personalized Recommendations**: Automatically compiles concrete topic revision guides and practice advice when finalizing sessions.
 - **Interview History Management**: Persistent repository of all past mock interview transcripts and performance scorecard results.
 - **Fault-Tolerant Report Generation**: Advanced backend error handling that compiles standard fallbacks if connection timeouts or API issues occur.
+
+---
+
+## Core API Endpoints
+
+| Endpoint | HTTP Method | Auth Required | Description |
+| :--- | :--- | :--- | :--- |
+| `/api/auth/register` | `POST` | No | Creates a new candidate user account with Bcrypt password hashing. |
+| `/api/auth/token` | `POST` | No | Authenticates credentials and returns a secure JWT access token. |
+| `/api/interview/resume/ats-analyze` | `POST` | Yes | Uploads resume and job description to return score, skill matching, and keywords. |
+| `/api/interview/session/start` | `POST` | Yes | Initiates a new stateful mock interview session and returns the first question. |
+| `/api/interview/session/{session_id}/answer` | `POST` | Yes | Submits candidate answer, returns real-time grading, and yields next adaptive question. |
+| `/api/interview/session/{session_id}/finalize` | `POST` | Yes | Finalizes the session, updates proficiency scores, and saves final report scorecard. |
+| `/api/history/sessions` | `GET` | Yes | Retrieves list of all past interview sessions for the authenticated user. |
+| `/api/history/session/{session_id}` | `GET` | Yes | Returns full transcript details, grading metrics, and final scorecard for a session. |
+| `/api/performance/profile` | `GET` | Yes | Compiles user-level cumulative topic averages, strength/weakness badges, and practice recommendations. |
+
+---
+
+## Project Structure
+
+```
+.
+├── backend/
+│   └── app/
+│       ├── routes/
+│       │   ├── auth.py
+│       │   ├── history.py
+│       │   ├── interview.py
+│       │   └── performance.py
+│       ├── services/
+│       │   ├── llm_service.py
+│       │   └── resume_service.py
+│       ├── utils/
+│       │   ├── auth.py
+│       │   ├── helpers.py
+│       │   └── logger.py
+│       ├── config.py
+│       ├── database.py
+│       ├── main.py
+│       ├── models.py
+│       └── schemas.py
+├── docs/
+│   └── screenshots/
+├── frontend/
+│   └── app.py
+├── .env.example
+├── README.md
+└── requirements.txt
+```
 
 ---
 
@@ -363,7 +438,7 @@ sequenceDiagram
 - **Frontend Client**: Streamlit (Reactive layout state, customized CSS theme injection, pandas data visualizers).
 - **AI Orchestration**: Google GenAI SDK (Interfacing with `gemini-2.5-flash` model, schema-enforced JSON generation).
 - **Database Engine**: SQLAlchemy ORM with SQLite (Local file-based system, relationships, cascade deletes, JSON columns).
-- **Security Utilities**: JWT (JSON Web Tokens), passlib, native bcrypt hashing.
+- **Security Utilities**: PyJWT (JSON Web Tokens) and native bcrypt hashing.
 - **Resume Extractor**: PyPDF2 (Binary text stream processing).
 
 ---
@@ -452,6 +527,26 @@ Open `http://localhost:8501` in your browser to view the application.
 4. In the **Advanced Settings** dialog, configure your environment variables:
    - `BACKEND_URL`: The URL of your deployed FastAPI backend service.
    - `GEMINI_API_KEY`: (Optional fallback key).
+
+---
+
+## Author
+
+**Shruti Kukreti**
+- **Education**: B.Tech in Computer Science & Engineering, Graphic Era Hill University
+- **GitHub**: [github.com/Shruttik](https://github.com/Shruttik)
+- **LinkedIn**: [linkedin.com/in/shruti-kukreti-5603a428b](https://www.linkedin.com/in/shruti-kukreti-5603a428b)
+
+---
+
+## Resume Project Summary
+
+**AI Interview Assistant & ATS Resume Optimizer** (Full-Stack AI Application)
+- Engineered a decoupled web application leveraging a modular **FastAPI** REST API backend and a responsive **Streamlit** frontend client to automate candidate evaluations.
+- Developed an adaptive mock interview engine using **Google Gemini 2.5 Flash** that dynamically tunes question difficulty (Easy, Medium, Hard) and prioritizes weak skill areas based on rolling session scores.
+- Implemented stateful user sessions, password hashing with raw **Bcrypt**, and token-based protected endpoints using **PyJWT** and **SQLAlchemy** SQLite integration.
+- Designed an automated ATS scanner performing semantic matching and keyword extraction, generating skill gap card reports and formatting suggestions.
+- Integrated structured logger tracing and fault-tolerant fallback scoring logic to guarantee 100% session persistence under API network connectivity failures.
 
 ---
 
