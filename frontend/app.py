@@ -311,7 +311,19 @@ st.markdown(CUSTOM_CSS, unsafe_allow_html=True)
 # ---------------------------------------------------------------------------
 # Config & API Parameters
 # ---------------------------------------------------------------------------
-BACKEND_URL = os.getenv("BACKEND_URL", "http://127.0.0.1:8000")
+# Try to get BACKEND_URL from Streamlit secrets first, then environment variables, falling back to the Render URL
+BACKEND_URL = None
+try:
+    if "BACKEND_URL" in st.secrets:
+        BACKEND_URL = st.secrets["BACKEND_URL"]
+except Exception:
+    pass
+
+if not BACKEND_URL:
+    BACKEND_URL = os.getenv("BACKEND_URL")
+
+if not BACKEND_URL:
+    BACKEND_URL = "https://ai-interview-assistant-6nr6.onrender.com"
 
 # ---------------------------------------------------------------------------
 # Session State Initialization
