@@ -15,9 +15,9 @@ Built with a decoupled FastAPI backend architecture and a responsive Streamlit f
 
 ## Live Demo
 
-Frontend: <TO_BE_FILLED_AFTER_DEPLOYMENT>
+Frontend: <https://ai-interview-assistant-pzlrqtitunmhxvdtburudl.streamlit.app>
 
-Backend API Docs: <TO_BE_FILLED_AFTER_DEPLOYMENT>
+Backend API Docs: <https://ai-interview-backend-47v4.onrender.com>
 
 ---
 
