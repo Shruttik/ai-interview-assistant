@@ -3,11 +3,12 @@ services:
   - type: web
     name: ai-interview-backend
     env: python
+    plan: free
     buildCommand: pip install -r requirements.txt
     startCommand: uvicorn backend.app.main:app --host 0.0.0.0 --port $PORT
     envVars:
       - key: DATABASE_URL
-        value: sqlite:////data/interview_coach.db
+        value: sqlite:///./interview_coach.db
       - key: GEMINI_API_KEY
         sync: false
       - key: SECRET_KEY
@@ -16,7 +17,3 @@ services:
         value: HS256
       - key: ACCESS_TOKEN_EXPIRE_MINUTES
         value: "60"
-    disk:
-      name: sqlite-data
-      mountPath: /data
-      sizeGB: 1
